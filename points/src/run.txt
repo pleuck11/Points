@@ -1,0 +1,3 @@
+cd points
+
+bun run dev
