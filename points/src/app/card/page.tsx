@@ -5,14 +5,19 @@ import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
+import { QrReader } from "react-qr-reader";
 
-const MAX_STAMPS = 10; // เปลี่ยนเป็น 10 แก้ว
+const MAX_STAMPS = 10; // สะสม 10 แก้ว
 
 export default function CardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stamps, setStamps] = useState(0);
   const [phone, setPhone] = useState("");
+
+  // state สำหรับกล้องสแกน
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanMessage, setScanMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -48,23 +53,39 @@ export default function CardPage() {
 
   return (
     <main className="min-h-screen bg-slate-100 flex flex-col">
-      {/* แถบบนสุดเหมือนภาพร่าง */}
+      {/* แถบบนสุด */}
       <header className="w-full flex items-center justify-between px-6 py-3 border-b border-slate-300 bg-slate-50">
         <span className="font-semibold text-sm">
           บัตรสะสมแต้มร้าน Points Café
         </span>
 
-      <button
-        onClick={async () => {
-          await signOut(auth);
-          router.replace("/");
-        }}
-        className="px-4 py-1.5 rounded-full bg-gradient-to-r from-sky-400 to-blue-600
-                  text-white text-sm font-medium shadow-md hover:brightness-110
-                  active:scale-95 transition-all"
-      >
-        ออกจากระบบ
-      </button>
+        <div className="flex items-center gap-2">
+          {/* ปุ่มเปิดกล้องสแกน */}
+          <button
+            onClick={() => {
+              setScanOpen(true);
+              setScanMessage(null);
+            }}
+            className="px-4 py-1.5 rounded-full bg-gradient-to-r from-sky-400 to-blue-600
+                       text-white text-sm font-medium shadow-md hover:brightness-110
+                       active:scale-95 transition-all"
+          >
+            สแกนรับแต้ม
+          </button>
+
+          {/* ปุ่มออกจากระบบ */}
+          <button
+            onClick={async () => {
+              await signOut(auth);
+              router.replace("/");
+            }}
+            className="px-4 py-1.5 rounded-full bg-gradient-to-r from-sky-400 to-blue-600
+                       text-white text-sm font-medium shadow-md hover:brightness-110
+                       active:scale-95 transition-all"
+          >
+            ออกจากระบบ
+          </button>
+        </div>
       </header>
 
       {/* พื้นที่กลางหน้าจอวางการ์ดไว้ตรงกลาง */}
@@ -120,6 +141,48 @@ export default function CardPage() {
           </p>
         </div>
       </div>
+
+      {/* Popup กล้องสแกน QR */}
+      {scanOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-white rounded-2xl p-4 w-full max-w-sm">
+            <p className="text-sm font-semibold mb-2">สแกน QR เพื่อรับแต้ม</p>
+
+            <div className="rounded-xl overflow-hidden mb-3">
+              <QrReader
+                constraints={{ facingMode: "environment" }}
+                onResult={(result: any, error: any) => {
+                  if (result?.text) {
+                    const text: string = result.text;
+                    setScanMessage("กำลังพาไปหน้ารับแต้ม...");
+                    // สมมติใน QR เป็น URL /claim?id=xxxx ที่ admin สร้างไว้
+                    window.location.href = text;
+                  }
+                  if (error) {
+                    // ไม่ต้อง log รัว ๆ แค่เงียบ ๆ ได้
+                  }
+                }}
+                containerStyle={{ width: "100%" }}
+                videoStyle={{ width: "100%" }}
+              />
+            </div>
+
+            {scanMessage && (
+              <p className="text-xs text-slate-600 mb-2">{scanMessage}</p>
+            )}
+
+            <button
+              onClick={() => {
+                setScanOpen(false);
+                setScanMessage(null);
+              }}
+              className="w-full px-4 py-2 rounded-md bg-slate-200 text-slate-800 text-sm"
+            >
+              ปิดกล้อง
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
