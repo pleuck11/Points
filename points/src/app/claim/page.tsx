@@ -23,9 +23,11 @@ export default function ClaimPage({ searchParams }: ClaimPageProps) {
   const [status, setStatus] = useState<
     "loading" | "success" | "not_found" | "used" | "error" | "no_id"
   >("loading");
+  const [amount, setAmount] = useState<number | null>(null);
 
   useEffect(() => {
     const codeId = searchParams.id;
+
     if (!codeId) {
       setStatus("no_id");
       return;
@@ -33,7 +35,7 @@ export default function ClaimPage({ searchParams }: ClaimPageProps) {
 
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        // ถ้าไม่ล็อกอินให้ส่งกลับหน้าแรกไปล็อกอินก่อน
+        // ยังไม่ได้ล็อกอิน → ส่งกลับหน้าแรกให้ไปล็อกอินก่อน
         router.replace("/");
         return;
       }
@@ -48,27 +50,34 @@ export default function ClaimPage({ searchParams }: ClaimPageProps) {
         }
 
         const qrData = qrSnap.data() as any;
+
         if (qrData.used) {
           setStatus("used");
           return;
         }
 
-        const amount: number = qrData.amount ?? 0;
+        const amt: number = qrData.amount ?? 0;
+        setAmount(amt);
 
-        // ทำเครื่องหมายว่า QR นี้ถูกใช้แล้ว
+        // 1) ทำเครื่องหมายว่า QR นี้ถูกใช้แล้ว
         await updateDoc(qrRef, {
           used: true,
           usedBy: user.uid,
           usedAt: serverTimestamp(),
         });
 
-        // เพิ่มแต้มให้ user
+        // 2) เพิ่มแต้มให้ user (field stamps)
         const userRef = doc(db, "users", user.uid);
         await updateDoc(userRef, {
-          stamps: increment(amount),
+          stamps: increment(amt),
         });
 
         setStatus("success");
+
+        // 3) รอแป๊บเดียวแล้วเด้งกลับไปหน้า card
+        setTimeout(() => {
+          router.replace("/card");
+        }, 1500);
       } catch (err) {
         console.error(err);
         setStatus("error");
@@ -78,15 +87,15 @@ export default function ClaimPage({ searchParams }: ClaimPageProps) {
     return () => unsub();
   }, [router, searchParams.id]);
 
-  const goToCard = () => router.push("/card");
-
   let message: string;
   switch (status) {
     case "loading":
       message = "กำลังตรวจสอบคูปอง...";
       break;
     case "success":
-      message = "เพิ่มแต้มเรียบร้อยแล้ว 🎉";
+      message = amount
+        ? `เพิ่มแต้มสำเร็จ +${amount} แก้ว 🎉`
+        : "เพิ่มแต้มสำเร็จ 🎉";
       break;
     case "not_found":
       message = "ไม่พบคูปองนี้ หรืออาจถูกลบไปแล้ว";
@@ -104,15 +113,11 @@ export default function ClaimPage({ searchParams }: ClaimPageProps) {
   return (
     <main className="min-h-screen flex items-center justify-center bg-slate-100">
       <div className="bg-white rounded-xl shadow p-6 max-w-sm text-center">
-        <p className="text-sm text-slate-800 mb-4">{message}</p>
-
-        {status !== "loading" && (
-          <button
-            onClick={goToCard}
-            className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm"
-          >
-            ไปหน้าบัตรสะสมแต้ม
-          </button>
+        <p className="text-sm text-slate-800 mb-2">{message}</p>
+        {status === "success" && (
+          <p className="text-xs text-slate-500">
+            กำลังกลับไปที่หน้าบัตรสะสมแต้ม...
+          </p>
         )}
       </div>
     </main>

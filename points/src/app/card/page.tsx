@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { QrReader } from "react-qr-reader";
 
-const MAX_STAMPS = 10; // สะสม 10 แก้ว
+const MAX_STAMPS = 10;
 
 export default function CardPage() {
   const router = useRouter();
@@ -15,32 +15,41 @@ export default function CardPage() {
   const [stamps, setStamps] = useState(0);
   const [phone, setPhone] = useState("");
 
-  // state สำหรับกล้องสแกน
   const [scanOpen, setScanOpen] = useState(false);
   const [scanMessage, setScanMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
+    // ฟัง auth + subscribe ข้อมูล user แบบ realtime
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
       if (!user) {
         router.replace("/");
         return;
       }
 
-      try {
-        const snap = await getDoc(doc(db, "users", user.uid));
-        if (snap.exists()) {
-          const data = snap.data() as any;
-          setStamps(data.stamps ?? 0);
-          setPhone(data.phone ?? "");
+      const userRef = doc(db, "users", user.uid);
+      const unsubUser = onSnapshot(
+        userRef,
+        (snap) => {
+          if (snap.exists()) {
+            const data = snap.data() as any;
+            setStamps(data.stamps ?? 0);
+            setPhone(data.phone ?? "");
+          }
+          setLoading(false);
+        },
+        (err) => {
+          console.error(err);
+          setLoading(false);
         }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+      );
+
+      // cleanup user snapshot เวลา auth เปลี่ยน
+      return () => unsubUser();
     });
 
-    return () => unsub();
+    return () => {
+      unsubAuth();
+    };
   }, [router]);
 
   if (loading) {
@@ -60,7 +69,6 @@ export default function CardPage() {
         </span>
 
         <div className="flex items-center gap-2">
-          {/* ปุ่มเปิดกล้องสแกน */}
           <button
             onClick={() => {
               setScanOpen(true);
@@ -73,7 +81,6 @@ export default function CardPage() {
             สแกนรับแต้ม
           </button>
 
-          {/* ปุ่มออกจากระบบ */}
           <button
             onClick={async () => {
               await signOut(auth);
@@ -88,10 +95,9 @@ export default function CardPage() {
         </div>
       </header>
 
-      {/* พื้นที่กลางหน้าจอวางการ์ดไว้ตรงกลาง */}
+      {/* การ์ดสะสมแต้ม */}
       <div className="flex-1 flex items-center justify-center">
         <div className="w-full max-w-md rounded-2xl shadow-lg p-4 bg-[#b29b86] text-white">
-          {/* แถบหัวการ์ด */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-lime-500 flex items-center justify-center text-[10px] font-bold">
@@ -110,7 +116,6 @@ export default function CardPage() {
             </div>
           </div>
 
-          {/* แถวแก้วน้ำ + GOAL */}
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="grid grid-cols-5 gap-3">
               {Array.from({ length: MAX_STAMPS }).map((_, i) => {
@@ -133,7 +138,6 @@ export default function CardPage() {
             </div>
           </div>
 
-          {/* ข้อความด้านล่าง */}
           <p className="text-[11px] text-white/85">
             สะสมครบ {MAX_STAMPS} แก้ว รับฟรี 1 แก้ว 🎁
             <br />
@@ -142,7 +146,7 @@ export default function CardPage() {
         </div>
       </div>
 
-      {/* Popup กล้องสแกน QR */}
+      {/* Popup สแกน QR */}
       {scanOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-white rounded-2xl p-4 w-full max-w-sm">
@@ -151,15 +155,24 @@ export default function CardPage() {
             <div className="rounded-xl overflow-hidden mb-3">
               <QrReader
                 constraints={{ facingMode: "environment" }}
-                onResult={(result: any, error: any) => {
-                  if (result?.text) {
-                    const text: string = result.text;
-                    setScanMessage("กำลังพาไปหน้ารับแต้ม...");
-                    // สมมติใน QR เป็น URL /claim?id=xxxx ที่ admin สร้างไว้
-                    window.location.href = text;
+                onResult={(result, error) => {
+                  if (result) {
+                    const text = result.getText();
+                    if (text) {
+                      setScanMessage("กำลังพาไปหน้ารับแต้ม...");
+                      window.location.href = text;
+                    }
                   }
                   if (error) {
-                    // ไม่ต้อง log รัว ๆ แค่เงียบ ๆ ได้
+                    if (
+                      error.name === "NotAllowedError" ||
+                      error.name === "NotFoundError" ||
+                      error.name === "NotReadableError"
+                    ) {
+                      setScanMessage(
+                        "ไม่สามารถใช้กล้องได้ กรุณาเปิดผ่าน https หรือใช้กล้องมือถือสแกน QR ปกติ"
+                      );
+                    }
                   }
                 }}
                 containerStyle={{ width: "100%" }}
