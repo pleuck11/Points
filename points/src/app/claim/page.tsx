@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import {
@@ -12,21 +12,17 @@ import {
   increment,
 } from "firebase/firestore";
 
-type ClaimPageProps = {
-  searchParams: {
-    id?: string;
-  };
-};
-
-export default function ClaimPage({ searchParams }: ClaimPageProps) {
+export default function ClaimPage() {
   const router = useRouter();
+  const searchParams = useSearchParams(); // 👈 ใช้อ่าน query จาก URL
+
   const [status, setStatus] = useState<
     "loading" | "success" | "not_found" | "used" | "error" | "no_id"
   >("loading");
   const [amount, setAmount] = useState<number | null>(null);
 
   useEffect(() => {
-    const codeId = searchParams.id;
+    const codeId = searchParams.get("id"); // 👈 ดึงค่าจาก ?id=...
 
     if (!codeId) {
       setStatus("no_id");
@@ -35,8 +31,7 @@ export default function ClaimPage({ searchParams }: ClaimPageProps) {
 
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        // ยังไม่ได้ล็อกอิน → ส่งกลับหน้าแรกให้ไปล็อกอินก่อน
-        router.replace("/");
+        router.replace("/"); // ให้ไปล็อกอินก่อน
         return;
       }
 
@@ -59,14 +54,14 @@ export default function ClaimPage({ searchParams }: ClaimPageProps) {
         const amt: number = qrData.amount ?? 0;
         setAmount(amt);
 
-        // 1) ทำเครื่องหมายว่า QR นี้ถูกใช้แล้ว
+        // mark ว่าใช้แล้ว
         await updateDoc(qrRef, {
           used: true,
           usedBy: user.uid,
           usedAt: serverTimestamp(),
         });
 
-        // 2) เพิ่มแต้มให้ user (field stamps)
+        // เพิ่มแต้มให้ user
         const userRef = doc(db, "users", user.uid);
         await updateDoc(userRef, {
           stamps: increment(amt),
@@ -74,7 +69,7 @@ export default function ClaimPage({ searchParams }: ClaimPageProps) {
 
         setStatus("success");
 
-        // 3) รอแป๊บเดียวแล้วเด้งกลับไปหน้า card
+        // เด้งกลับไปหน้าบัตรหลังจากนี้หน่อยนึง
         setTimeout(() => {
           router.replace("/card");
         }, 1500);
@@ -85,7 +80,7 @@ export default function ClaimPage({ searchParams }: ClaimPageProps) {
     });
 
     return () => unsub();
-  }, [router, searchParams.id]);
+  }, [router, searchParams]);
 
   let message: string;
   switch (status) {
