@@ -10,11 +10,16 @@ import {
   serverTimestamp,
   updateDoc,
   increment,
+  collection,
+  query,
+  where,
+  limit,
+  getDocs,
 } from "firebase/firestore";
 
 export default function ClaimPage() {
   const router = useRouter();
-  const searchParams = useSearchParams(); // 👈 ใช้อ่าน query จาก URL
+  const searchParams = useSearchParams();
 
   const [status, setStatus] = useState<
     "loading" | "success" | "not_found" | "used" | "error" | "no_id"
@@ -22,29 +27,56 @@ export default function ClaimPage() {
   const [amount, setAmount] = useState<number | null>(null);
 
   useEffect(() => {
-    const codeId = searchParams.get("id"); // 👈 ดึงค่าจาก ?id=...
+    const codeIdFromUrl = searchParams.get("id");
+    const pinFromUrl = searchParams.get("pin");
 
-    if (!codeId) {
+    if (!codeIdFromUrl && !pinFromUrl) {
       setStatus("no_id");
       return;
     }
 
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        router.replace("/"); // ให้ไปล็อกอินก่อน
+        router.replace("/");
         return;
       }
 
       try {
-        const qrRef = doc(db, "qr_codes", codeId);
-        const qrSnap = await getDoc(qrRef);
+        let codeId = codeIdFromUrl ?? null;
+        let qrData: any | null = null;
 
-        if (!qrSnap.exists()) {
-          setStatus("not_found");
+        // ถ้าไม่มี id แต่มี pin → หา doc จาก pin
+        if (!codeId && pinFromUrl) {
+          const q = query(
+            collection(db, "qr_codes"),
+            where("pin", "==", pinFromUrl),
+            limit(1)
+          );
+          const qsnap = await getDocs(q);
+          if (qsnap.empty) {
+            setStatus("not_found");
+            return;
+          }
+          const docSnap = qsnap.docs[0];
+          codeId = docSnap.id;
+          qrData = docSnap.data();
+        }
+
+        if (!codeId) {
+          setStatus("no_id");
           return;
         }
 
-        const qrData = qrSnap.data() as any;
+        const qrRef = doc(db, "qr_codes", codeId);
+
+        if (!qrData) {
+          const qrSnap = await getDoc(qrRef);
+          if (!qrSnap.exists()) {
+            setStatus("not_found");
+            return;
+          }
+          qrData = qrSnap.data();
+        }
 
         if (qrData.used) {
           setStatus("used");
@@ -54,14 +86,12 @@ export default function ClaimPage() {
         const amt: number = qrData.amount ?? 0;
         setAmount(amt);
 
-        // mark ว่าใช้แล้ว
         await updateDoc(qrRef, {
           used: true,
           usedBy: user.uid,
           usedAt: serverTimestamp(),
         });
 
-        // เพิ่มแต้มให้ user
         const userRef = doc(db, "users", user.uid);
         await updateDoc(userRef, {
           stamps: increment(amt),
@@ -69,7 +99,6 @@ export default function ClaimPage() {
 
         setStatus("success");
 
-        // เด้งกลับไปหน้าบัตรหลังจากนี้หน่อยนึง
         setTimeout(() => {
           router.replace("/card");
         }, 1500);
