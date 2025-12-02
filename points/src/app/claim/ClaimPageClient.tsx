@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import {
@@ -27,218 +27,212 @@ type Status =
   | "success"
   | "error";
 
+const MAX_STAMPS = 10;
+
 export default function ClaimPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [status, setStatus] = useState<Status>("checking");
-  const [message, setMessage] = useState<string | null>(null);
-  const [amount, setAmount] = useState<number>(0);
-  const [qrId, setQrId] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState<string>("");
 
   useEffect(() => {
-    const id = searchParams.get("id");
-    const pin = searchParams.get("pin")?.trim() || "";
-
-    setStatus("checking");
-    setMessage(null);
-    setQrId(null);
-
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         setStatus("need-login");
-        setMessage("กรุณาเข้าสู่ระบบก่อนเพื่อใช้คูปองสะสมแต้ม");
         return;
       }
 
-      if (!id && !pin) {
+      const idFromUrl = searchParams.get("id")?.trim() || "";
+      const pinFromUrl = searchParams.get("pin")?.trim() || "";
+
+      if (!idFromUrl && !pinFromUrl) {
         setStatus("invalid-link");
         setMessage("ลิงก์ไม่ถูกต้อง (ไม่มีรหัสคูปอง)");
         return;
       }
 
       try {
-        let qrSnap: any = null;
+        setStatus("checking");
 
-        if (id) {
-          // เคลมจากลิงก์ที่แนบ id มา
-          const ref = doc(db, "qr_codes", id);
-          const snap = await getDoc(ref);
-          if (snap.exists()) qrSnap = snap;
-        } else if (pin) {
-          // เคลมจาก PIN → ค้นหา qr_codes ที่ pin ตรงกัน
+        let couponRef;
+        let couponSnap;
+
+        if (idFromUrl) {
+          // กรณีลิงก์แบบเก่า /claim?id=xxxx
+          couponRef = doc(db, "qr_codes", idFromUrl);
+          couponSnap = await getDoc(couponRef);
+        } else {
+          // กรณีกรอก PIN: /claim?pin=xxxxxx
           const qrRef = collection(db, "qr_codes");
-          const q = query(qrRef, where("pin", "==", pin), limit(1));
-          const qs = await getDocs(q);
-          if (!qs.empty) qrSnap = qs.docs[0];
+          const q = query(
+            qrRef,
+            where("pin", "==", pinFromUrl),
+            limit(1),
+          );
+          const qrSnap = await getDocs(q);
+          if (qrSnap.empty) {
+            setStatus("not-found");
+            setMessage("ไม่พบคูปองจาก PIN นี้");
+            return;
+          }
+          const doc0 = qrSnap.docs[0];
+          couponRef = doc(db, "qr_codes", doc0.id);
+          couponSnap = doc0;
         }
 
-        if (!qrSnap) {
+        if (!couponSnap || !couponSnap.exists()) {
           setStatus("not-found");
-          setMessage(
-            "ไม่พบคูปองจากลิงก์หรือ PIN นี้ กรุณาสแกนใหม่หรือให้ร้านช่วยตรวจสอบ"
-          );
+          setMessage("ไม่พบคูปองในระบบ");
           return;
         }
 
-        const data = qrSnap.data() as any;
-        setQrId(qrSnap.id);
-        setAmount(data.amount ?? 0);
+        const couponData = couponSnap.data() as any;
 
-        if (data.used) {
+        if (couponData.used) {
           setStatus("already-used");
-          setMessage("คูปองนี้ถูกใช้ไปแล้ว กรุณาขอคูปองใหม่จากทางร้าน");
-        } else {
-          setStatus("ready");
-          setMessage(
-            `คูปองนี้ให้แต้มสะสมจำนวน ${data.amount ?? 0} แก้ว กดยืนยันเพื่อรับแต้มเข้าบัตรของคุณ`
-          );
+          setMessage("คูปองนี้ถูกใช้ไปแล้ว");
+          return;
         }
-      } catch (err) {
-        console.error("claim load error", err);
-        setStatus("error");
-        setMessage("เกิดข้อผิดพลาดในการโหลดข้อมูลคูปอง กรุณาลองใหม่อีกครั้ง");
+
+        // ตรวจสิทธิ์ +ตัดแต้ม +บันทึกประวัติแบบ transaction
+        await runTransaction(db, async (transaction) => {
+          const userRef = doc(db, "users", user.uid);
+          const userSnap = await transaction.get(userRef);
+
+          if (!userSnap.exists()) {
+            throw new Error("ไม่พบข้อมูลลูกค้า");
+          }
+
+          const userData = userSnap.data() as any;
+          const currentStamps = userData.stamps ?? 0;
+          const phone = userData.phone ?? "-";
+
+          if (currentStamps < MAX_STAMPS) {
+            throw new Error("แต้มยังไม่ครบ 10 แก้ว");
+          }
+
+          // ตัดแต้มใน user + เพิ่ม log ใน user (เก็บทุกครั้ง)
+          const newHistory = [
+            ...(userData.redeemHistory ?? []),
+            {
+              at: serverTimestamp(),
+              detail: "แลกแก้วฟรี 1 แก้ว",
+            },
+          ];
+
+          transaction.update(userRef, {
+            stamps: currentStamps - MAX_STAMPS,
+            redeemHistory: newHistory,
+          });
+
+          // อัปเดตคูปองว่าถูกใช้แล้ว + เก็บ userId ที่ใช้
+          transaction.update(couponRef, {
+            used: true,
+            usedBy: user.uid,
+            usedAt: serverTimestamp(),
+            usedPhone: phone,
+          });
+
+          // เก็บ log แยกสำหรับหน้า admin usage
+          const usageRef = collection(db, "coupon_usages");
+          transaction.set(doc(usageRef), {
+            userId: user.uid,
+            phone,
+            couponId: couponRef.id,
+            usedAt: serverTimestamp(),
+          });
+        });
+
+        setStatus("success");
+        setMessage("ใช้คูปองสำเร็จ! แต้มถูกตัดและบันทึกประวัติแล้ว");
+      } catch (err: any) {
+        console.error(err);
+        if (err?.message?.includes("แต้มยังไม่ครบ")) {
+          setStatus("error");
+          setMessage(err.message);
+        } else {
+          setStatus("error");
+          setMessage("เกิดข้อผิดพลาดในการใช้คูปอง");
+        }
       }
     });
 
     return () => unsub();
-  }, [searchParams]);
+  }, [searchParams, router]);
 
-  const handleConfirm = async () => {
-    const user = auth.currentUser;
-    if (!user || !qrId || submitting) return;
+  // ------- UI ---------
+  const goBack = () => router.replace("/card");
 
-    setSubmitting(true);
-    setMessage(null);
-
-    try {
-      await runTransaction(db, async (tx) => {
-        const userRef = doc(db, "users", user.uid);
-        const qrRef = doc(db, "qr_codes", qrId);
-
-        const [userSnap, qrSnap] = await Promise.all([
-          tx.get(userRef),
-          tx.get(qrRef),
-        ]);
-
-        if (!qrSnap.exists()) {
-          throw new Error("QR_NOT_FOUND");
-        }
-
-        const qrData = qrSnap.data() as any;
-        if (qrData.used) {
-          throw new Error("QR_ALREADY_USED");
-        }
-
-        const userData = (userSnap.data() as any) || {};
-        const currentStamps = userData.stamps ?? 0;
-        const newStamps = currentStamps + (qrData.amount ?? 0);
-
-        // อัปเดตแต้มของลูกค้า
-        tx.set(
-          userRef,
-          {
-            stamps: newStamps,
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
+  const renderContent = () => {
+    switch (status) {
+      case "checking":
+        return (
+          <>
+            <h1 className="text-lg font-semibold mb-2">ใช้คูปองสะสมแต้ม</h1>
+            <p className="text-sm text-slate-600">
+              กำลังตรวจสอบคูปอง กรุณารอสักครู่...
+            </p>
+          </>
         );
 
-        // มาร์กว่าคูปองนี้ถูกใช้แล้ว
-        tx.update(qrRef, {
-          used: true,
-          usedBy: user.uid,
-          usedAt: serverTimestamp(),
-        });
-      });
+      case "need-login":
+        return (
+          <>
+            <h1 className="text-lg font-semibold mb-2">ต้องเข้าสู่ระบบก่อน</h1>
+            <p className="text-sm text-slate-600 mb-3">
+              กรุณาเข้าสู่ระบบในอุปกรณ์ของลูกค้าก่อน จากนั้นลองเปิดลิงก์นี้ใหม่อีกครั้ง
+            </p>
+            <button
+              onClick={() => router.replace("/")}
+              className="px-4 py-2 rounded-full bg-gradient-to-r from-sky-400 to-blue-600 text-white text-sm font-medium"
+            >
+              ไปหน้าเข้าสู่ระบบ
+            </button>
+          </>
+        );
 
-      setStatus("success");
-      setMessage(
-        `รับแต้มสะสมสำเร็จ (+${amount} แก้ว) แต้มใหม่จะอัปเดตบนบัตรสะสมของคุณ`
-      );
-    } catch (err: any) {
-      console.error("claim confirm error", err);
-      if (err?.message === "QR_ALREADY_USED") {
-        setStatus("already-used");
-        setMessage("คูปองนี้ถูกใช้ไปแล้ว กรุณาขอคูปองใหม่จากทางร้าน");
-      } else if (err?.message === "QR_NOT_FOUND") {
-        setStatus("not-found");
-        setMessage("ไม่พบคูปองนี้ในระบบ กรุณาสแกนใหม่หรือให้ร้านช่วยตรวจสอบ");
-      } else {
-        setStatus("error");
-        setMessage("เกิดข้อผิดพลาดในการใช้คูปอง กรุณาลองใหม่อีกครั้ง");
-      }
-    } finally {
-      setSubmitting(false);
+      case "invalid-link":
+      case "not-found":
+      case "already-used":
+      case "error":
+        return (
+          <>
+            <h1 className="text-lg font-semibold mb-2">ใช้คูปองสะสมแต้ม</h1>
+            <p className="text-sm text-red-600 mb-3">{message}</p>
+            <button
+              onClick={goBack}
+              className="px-4 py-2 rounded-full bg-gradient-to-r from-sky-400 to-blue-600 text-white text-sm font-medium"
+            >
+              กลับไปหน้าบัตร
+            </button>
+          </>
+        );
+
+      case "success":
+        return (
+          <>
+            <h1 className="text-lg font-semibold mb-2">ใช้คูปองสำเร็จ 🎉</h1>
+            <p className="text-sm text-slate-700 mb-3">{message}</p>
+            <button
+              onClick={goBack}
+              className="px-4 py-2 rounded-full bg-gradient-to-r from-emerald-400 to-green-600 text-white text-sm font-medium"
+            >
+              กลับไปหน้าบัตร
+            </button>
+          </>
+        );
+
+      case "ready":
+      default:
+        return null;
     }
   };
 
-  const goToCard = () => {
-    router.push("/card");
-  };
-
-  // ---------- UI ----------
   return (
     <main className="min-h-screen bg-slate-100 flex items-center justify-center px-4">
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow p-6">
-        <h1 className="text-lg font-semibold mb-4 text-center">
-          ใช้คูปองสะสมแต้ม
-        </h1>
-
-        {status === "checking" && (
-          <p className="text-sm text-slate-600 text-center">
-            กำลังตรวจสอบคูปองของคุณ...
-          </p>
-        )}
-
-        {status !== "checking" && (
-          <>
-            {message && (
-              <p className="text-sm text-center mb-4 text-slate-700">
-                {message}
-              </p>
-            )}
-
-            {status === "ready" && (
-              <div className="flex flex-col items-center gap-3 mb-4">
-                <div className="text-3xl">🥤</div>
-                <p className="text-sm text-slate-700">
-                  คุณจะได้รับแต้มสะสม{" "}
-                  <span className="font-semibold">{amount}</span> แก้ว
-                </p>
-                <button
-                  onClick={handleConfirm}
-                  disabled={submitting}
-                  className="mt-2 px-5 py-2 rounded-full bg-gradient-to-r from-sky-400 to-blue-600 text-white text-sm font-medium shadow-md hover:brightness-110 active:scale-95 transition-all disabled:opacity-60"
-                >
-                  {submitting ? "กำลังบันทึก..." : "ยืนยันรับแต้ม"}
-                </button>
-              </div>
-            )}
-
-            {status === "need-login" && (
-              <p className="text-sm text-center text-slate-700">
-                กรุณาเข้าสู่ระบบจากหน้าบัตรสะสมแต้ม แล้วสแกน / กรอกรหัสใหม่อีกครั้ง
-              </p>
-            )}
-
-            {(status === "invalid-link" ||
-              status === "not-found" ||
-              status === "already-used" ||
-              status === "error" ||
-              status === "success") && (
-              <div className="flex justify-center mt-2">
-                <button
-                  onClick={goToCard}
-                  className="px-5 py-2 rounded-full bg-gradient-to-r from-sky-400 to-blue-600 text-white text-sm font-medium shadow-md hover:brightness-110 active:scale-95 transition-all"
-                >
-                  กลับไปหน้าบัตร
-                </button>
-              </div>
-            )}
-          </>
-        )}
+      <div className="w-full max-w-md bg-white rounded-2xl shadow p-6 text-center">
+        {renderContent()}
       </div>
     </main>
   );

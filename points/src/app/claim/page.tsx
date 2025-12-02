@@ -3,18 +3,15 @@ import { Suspense } from "react";
 import ClaimPageClient from "./ClaimPageClient";
 
 export default function ClaimPage() {
+  // ตรงนี้ห้ามมี "use client"
+  // และห้าม import/useSearchParams ในไฟล์นี้โดยเด็ดขาด
+
   return (
-    <Suspense
-      fallback={
-        <main className="min-h-screen bg-slate-100 flex items-center justify-center px-4">
-          <div className="w-full max-w-lg bg-white rounded-2xl shadow p-6">
-            <p className="text-sm text-slate-600 text-center">
-              กำลังโหลดหน้าสำหรับใช้คูปอง...
-            </p>
-          </div>
-        </main>
-      }
-    >
+    <Suspense fallback={
+      <main className="min-h-screen flex items-center justify-center bg-slate-100">
+        <p className="text-slate-600 text-sm">กำลังตรวจสอบคูปอง...</p>
+      </main>
+    }>
       <ClaimPageClient />
     </Suspense>
   );
