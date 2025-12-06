@@ -1,28 +1,10 @@
-// app/layout.tsx
-import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata } from "next";
 import "./globals.css";
+import { Suspense } from "react";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-// ข้อมูลทั่วไปของเว็บ
 export const metadata: Metadata = {
   title: "Points Loyalty",
-  description: "ระบบสะสมแต้มสำหรับลูกค้า",
-};
-
-// ให้ viewport รองรับมือถือ (zoom พอดีหน้าจอ)
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
+  description: "ระบบสะสมแต้มสำหรับร้านค้า",
 };
 
 export default function RootLayout({
@@ -32,16 +14,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="th">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-100 text-slate-900`}
-      >
-        {/* โครงกลางของทุกหน้า */}
-        <div className="min-h-screen flex flex-col">
-          {/* ถ้าจะมี Header/Footer รวมทุกหน้าค่อยวางเพิ่มตรงนี้ได้ */}
-          <main className="flex-1">
-            {children}
-          </main>
-        </div>
+      <body>
+        <Suspense
+          fallback={
+            <div className="min-h-screen flex items-center justify-center bg-slate-100">
+              <p className="text-slate-600">กำลังโหลดหน้า...</p>
+            </div>
+          }
+        >
+          {children}
+        </Suspense>
       </body>
     </html>
   );
