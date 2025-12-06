@@ -3,7 +3,6 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
 import { auth, db } from "@/lib/firebase";
 import {
   onAuthStateChanged,
@@ -150,7 +149,7 @@ export default function RewardPointsClient() {
 
   useEffect(() => {
     if (!user) return;
-    void fetchRedeemLogsForUser(user.uid);
+    fetchRedeemLogsForUser(user.uid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -162,7 +161,7 @@ export default function RewardPointsClient() {
   const currentPoints = userDoc?.points ?? 0;
   const stampsPerReward = 10;
 
-  // ใช้ % เพื่อให้วง stamp แสดงรอบปัจจุบัน
+  // แสดงสแตมป์ในรอบปัจจุบัน
   const stampsInCurrentCycle = currentPoints % stampsPerReward;
   const stampsFilled = Math.min(stampsInCurrentCycle, stampsPerReward);
   const stampsEmpty = Math.max(0, stampsPerReward - stampsFilled);
@@ -330,7 +329,7 @@ export default function RewardPointsClient() {
 
       // โหลดประวัติใหม่
       if (user) {
-        void fetchRedeemLogsForUser(user.uid);
+        fetchRedeemLogsForUser(user.uid);
       }
     } catch (err: any) {
       console.error("Redeem error:", err);
@@ -346,8 +345,8 @@ export default function RewardPointsClient() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <p className="text-slate-600">กำลังโหลดข้อมูลสมาชิก...</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+        <p className="text-slate-200">กำลังโหลดข้อมูลสมาชิก...</p>
       </div>
     );
   }
@@ -357,11 +356,31 @@ export default function RewardPointsClient() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <main className="relative min-h-screen flex flex-col bg-slate-950 overflow-hidden">
+      {/* Liquid background */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 -left-24 h-64 w-64 rounded-full bg-sky-500/30 blur-3xl" />
+        <div className="absolute top-1/2 -right-32 h-72 w-72 rounded-full bg-emerald-400/25 blur-3xl" />
+        <div className="absolute -bottom-40 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-purple-500/25 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),transparent_55%)]" />
+      </div>
+
       {/* Top bar */}
-      <header className="w-full bg-white shadow-sm">
+      <header className="relative z-10 w-full border-b border-white/10 bg-slate-950/60 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto flex items-center justify-between px-4 py-3">
-          <h1 className="font-semibold text-lg">แต้มสะสมของฉัน</h1>
+          <div className="flex items-center gap-2">
+            <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-sky-400 via-emerald-400 to-indigo-500 flex items-center justify-center shadow-md shadow-sky-500/40">
+              <span className="text-sm font-bold text-slate-950">P</span>
+            </div>
+            <div>
+              <h1 className="text-sm md:text-base font-semibold text-white">
+                แต้มสะสมของฉัน
+              </h1>
+              <p className="text-[11px] text-slate-200/80">
+                {userDoc.displayName || userDoc.phone || userDoc.email}
+              </p>
+            </div>
+          </div>
 
           <div className="flex items-center gap-3">
             {/* เมนู dropdown */}
@@ -369,19 +388,19 @@ export default function RewardPointsClient() {
               <button
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
-                className="rounded-full border px-3 py-1 text-sm bg-white hover:bg-slate-50"
+                className="rounded-full border border-white/20 bg-slate-900/60 px-3 py-1 text-xs md:text-sm text-slate-50 hover:bg-slate-900/90"
               >
                 เมนู ▾
               </button>
               {menuOpen && (
-                <div className="absolute right-0 mt-2 w-40 rounded-lg border bg-white shadow-lg text-sm z-20">
+                <div className="absolute right-0 mt-2 w-44 rounded-2xl border border-white/15 bg-slate-900/95 backdrop-blur-xl shadow-xl text-xs md:text-sm z-20">
                   <button
                     type="button"
                     onClick={() => {
                       setMenuOpen(false);
                       setPinModalOpen(true);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-100"
+                    className="w-full text-left px-3 py-2 hover:bg-white/5 text-slate-50"
                   >
                     ใส่ PIN รับแต้ม
                   </button>
@@ -391,7 +410,7 @@ export default function RewardPointsClient() {
                       setMenuOpen(false);
                       router.push("/scan");
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-100"
+                    className="w-full text-left px-3 py-2 hover:bg-white/5 text-slate-50"
                   >
                     สแกน QR
                   </button>
@@ -401,7 +420,7 @@ export default function RewardPointsClient() {
 
             <button
               onClick={handleSignOut}
-              className="text-sm text-red-600 hover:underline"
+              className="text-xs md:text-sm text-red-300 hover:text-red-200 hover:underline"
             >
               ออกจากระบบ
             </button>
@@ -409,102 +428,134 @@ export default function RewardPointsClient() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
-        {/* ข้อมูลสมาชิก */}
-        <section className="bg-white rounded-xl shadow-sm p-4">
-          <h2 className="text-base font-semibold mb-2">ข้อมูลสมาชิก</h2>
-          <p className="text-sm">ชื่อที่แสดง: {userDoc.displayName || "-"}</p>
-          <p className="text-sm">เบอร์โทร: {userDoc.phone || "-"}</p>
-          <p className="text-sm">อีเมล: {userDoc.email || "-"}</p>
+      {/* Content */}
+      <div className="relative z-10 max-w-4xl mx-auto px-4 py-6 md:py-10 space-y-5 md:space-y-6">
+        {/* ข้อมูลสมาชิก + แต้มรวม */}
+        <section className="rounded-3xl border border-white/15 bg-white/10 backdrop-blur-2xl shadow-[0_18px_60px_rgba(15,23,42,0.9)] p-5 md:p-6 text-white">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-full bg-slate-900/70 flex items-center justify-center border border-white/10">
+                <span className="text-lg font-semibold">
+                  {(userDoc.displayName || "U").charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div>
+                <h2 className="text-base md:text-lg font-semibold">
+                  {userDoc.displayName || "-"}
+                </h2>
+                <p className="text-[11px] md:text-xs text-slate-200/80">
+                  เบอร์: {userDoc.phone || "-"}
+                </p>
+                <p className="text-[11px] md:text-xs text-slate-200/80">
+                  อีเมล: {userDoc.email || "-"}
+                </p>
+              </div>
+            </div>
+
+            <div className="text-right">
+              <p className="text-[11px] text-slate-200/80 mb-1">
+                แต้มสะสมทั้งหมด
+              </p>
+              <div className="inline-flex items-baseline gap-1 rounded-2xl bg-slate-900/70 border border-white/10 px-3 py-2">
+                <span className="text-2xl font-semibold text-emerald-300">
+                  {currentPoints}
+                </span>
+                <span className="text-xs text-slate-100">แต้ม</span>
+              </div>
+            </div>
+          </div>
         </section>
 
-        {/* การ์ดแต้มสะสมแบบ Brown cafe */}
+        {/* การ์ดแต้มสะสม Brown cafe */}
         <section className="flex justify-center">
-          <div className="w-full max-w-md bg-[#4b3326] text-white rounded-3xl shadow-lg px-6 pt-14 pb-8 flex flex-col items-center">
-            {/* โปรไฟล์ร้านเป็นวงกลม */}
-            <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center shadow-md overflow-hidden -mt-16 mb-3 border-4 border-[#4b3326]">
-              {/* 
-                นำรูปแก้วกาแฟจากเน็ตมาดาวน์โหลดไว้ใน public/images/coffee-cup.png 
-                หรือเปลี่ยน path ด้านล่างให้ตรงกับไฟล์ของคุณ
-              */}
-              <Image
-                src="/images/coffee-cup.png"
-                alt="Brown cafe"
-                width={96}
-                height={96}
-                className="w-full h-full object-cover"
-              />
-            </div>
+          <div className="w-full max-w-md rounded-3xl border border-white/15 bg-[#4b3326] shadow-[0_18px_60px_rgba(15,23,42,0.9)] overflow-hidden">
+            {/* หัวการ์ดสีน้ำตาลเข้ม */}
+            <div className="h-16 bg-[#382318]" />
 
-            <h3 className="mt-1 text-xl font-semibold">Brown cafe</h3>
-
-            <p className="mt-2 text-xs text-slate-100">
-              อีก {stampsRemaining} แต้มจะได้รับของรางวัล
-            </p>
-
-            <button
-              type="button"
-              disabled={!canRedeem || redeemLoading}
-              onClick={handleRedeem}
-              className={`mt-3 inline-flex items-center gap-1 rounded-full px-4 py-1.5 text-xs font-semibold shadow-sm ${
-                canRedeem
-                  ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                  : "bg-slate-500 text-slate-200 cursor-not-allowed"
-              }`}
-            >
-              ใช้แต้มสะสม
-            </button>
-
-            {redeemMessage && (
-              <p className="mt-2 text-[11px] text-emerald-300">
-                {redeemMessage}
-              </p>
-            )}
-            {redeemError && (
-              <p className="mt-2 text-[11px] text-red-300">{redeemError}</p>
-            )}
-
-            {/* แถว stamp 10 ช่อง */}
-            <div className="mt-5 grid grid-cols-5 gap-2 justify-items-center">
-              {Array.from({ length: stampsFilled }).map((_, i) => (
-                <div
-                  key={`f-${i}`}
-                  className="w-10 h-10 rounded-full border-2 border-emerald-400 bg-emerald-500 flex items-center justify-center text-[10px] font-bold"
-                >
-                  STAMP
+            {/* เนื้อหา */}
+            <div className="px-6 pb-6">
+              <div className="flex flex-col items-center -mt-10">
+                <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-md overflow-hidden border border-[#efdfc5]">
+                  {/* รูปแก้วกาแฟ (ใช้ <img> ธรรมดา) */}
+                  <img
+                    src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=200&q=80"
+                    alt="Coffee cup"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-              ))}
-              {Array.from({ length: stampsEmpty }).map((_, i) => (
-                <div
-                  key={`e-${i}`}
-                  className="w-10 h-10 rounded-full border-2 border-slate-400 bg-transparent flex items-center justify-center text-[10px] text-slate-300"
-                >
-                  +
-                </div>
-              ))}
-            </div>
+                <h3 className="mt-3 text-xl font-semibold text-[#fdf3df]">
+                  Brown cafe
+                </h3>
 
-            <div className="mt-4 text-center">
-              <p className="text-[11px] text-slate-200">
-                สะสมครบ 10 แต้มจึงจะใช้สิทธิ์ได้
-              </p>
-              <p className="text-[11px] text-emerald-300 mt-1">
-                แต้มทั้งหมดของคุณตอนนี้: {currentPoints} แต้ม
-              </p>
+                <p className="mt-2 text-xs text-[#f9e8c9]">
+                  อีก {stampsRemaining} แต้มจะได้รับของรางวัล
+                </p>
+
+                <button
+                  type="button"
+                  disabled={!canRedeem || redeemLoading}
+                  onClick={handleRedeem}
+                  className={`mt-2 inline-flex items-center gap-1 rounded-full px-4 py-1.5 text-xs font-semibold shadow-sm ${
+                    canRedeem
+                      ? "bg-[#f5d8a5] hover:bg-[#f2c883] text-[#3b2615]"
+                      : "bg-[#7b6046] text-[#f2ddc1] cursor-not-allowed"
+                  }`}
+                >
+                  ใช้แต้มสะสม (10 แต้ม)
+                </button>
+
+                {redeemMessage && (
+                  <p className="mt-2 text-[11px] text-emerald-200">
+                    {redeemMessage}
+                  </p>
+                )}
+                {redeemError && (
+                  <p className="mt-2 text-[11px] text-red-200">{redeemError}</p>
+                )}
+              </div>
+
+              {/* แถว stamp 10 ช่อง */}
+              <div className="mt-4 grid grid-cols-5 gap-2 justify-items-center">
+                {Array.from({ length: stampsFilled }).map((_, i) => (
+                  <div
+                    key={`f-${i}`}
+                    className="w-10 h-10 rounded-full border-2 border-[#f2d29e] bg-[#f2d29e] flex items-center justify-center text-[10px] font-bold text-[#3b2615]"
+                  >
+                    STAMP
+                  </div>
+                ))}
+                {Array.from({ length: stampsEmpty }).map((_, i) => (
+                  <div
+                    key={`e-${i}`}
+                    className="w-10 h-10 rounded-full border-2 border-[#b38c62] bg-transparent flex items-center justify-center text-[10px] text-[#d6b791]"
+                  >
+                    +
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 text-center">
+                <p className="text-[11px] text-[#f7e4c7]">
+                  สะสมครบ 10 แต้มจึงจะใช้สิทธิ์แลกรางวัลได้
+                </p>
+                <p className="text-[11px] text-[#f2d29e] mt-1">
+                  แต้มทั้งหมดของคุณตอนนี้: {currentPoints} แต้ม
+                </p>
+              </div>
             </div>
           </div>
         </section>
 
         {/* ประวัติการใช้แต้ม (แลกรางวัลครบ 10 แต้ม) */}
-        <section className="bg-white rounded-xl shadow-sm p-4 space-y-2">
-          <h2 className="text-base font-semibold">
-            ประวัติการใช้แต้ม (แลกรางวัลครบ 10 แต้ม)
+        <section className="rounded-3xl border border-white/15 bg-white/10 backdrop-blur-2xl shadow-[0_18px_60px_rgba(15,23,42,0.9)] p-5 md:p-6 text-white">
+          <h2 className="text-base md:text-lg font-semibold mb-2">
+            ประวัติการใช้แต้ม (แลกรางวัล)
           </h2>
 
           {loadingRedeemLogs ? (
-            <p className="text-xs text-slate-500">กำลังโหลดประวัติ...</p>
+            <p className="text-xs text-slate-200/80">กำลังโหลดประวัติ...</p>
           ) : redeemLogs.length === 0 ? (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-200/80">
               ยังไม่เคยใช้แต้มสะสมแลกรางวัล
             </p>
           ) : (
@@ -512,15 +563,17 @@ export default function RewardPointsClient() {
               {redeemLogs.map((log) => (
                 <li
                   key={log.id}
-                  className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2"
+                  className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/40 px-3 py-2"
                 >
                   <div>
-                    <div className="font-medium">แลกรางวัลสำเร็จ</div>
-                    <div className="text-[11px] text-slate-500">
+                    <div className="font-medium text-slate-50">
+                      แลกรางวัลสำเร็จ
+                    </div>
+                    <div className="text-[11px] text-slate-200/80">
                       วันที่/เวลา: {formatThaiDateTime(log.createdAt)}
                     </div>
                   </div>
-                  <div className="text-amber-700 font-semibold">
+                  <div className="text-amber-300 font-semibold">
                     {log.delta} แต้ม
                   </div>
                 </li>
@@ -528,7 +581,7 @@ export default function RewardPointsClient() {
             </ul>
           )}
         </section>
-      </main>
+      </div>
 
       {/* Modal ใส่ PIN */}
       {pinModalOpen && (
@@ -541,31 +594,31 @@ export default function RewardPointsClient() {
           }}
         >
           <div
-            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"
+            className="w-full max-w-sm rounded-2xl border border-white/15 bg-slate-900/95 backdrop-blur-2xl p-5 shadow-xl text-white"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-base font-semibold mb-2">
               ใส่ PIN เพื่อรับแต้มสะสม
             </h2>
-            <p className="text-xs text-slate-500 mb-3">
+            <p className="text-xs text-slate-200/80 mb-3">
               กรอก PIN ที่ได้รับจากร้าน หรือเปิดลิงก์ที่มี PIN
               ระบบจะเพิ่มแต้มให้ในบัญชีของคุณ
             </p>
 
             {pinError && (
-              <div className="mb-2 rounded-md bg-red-100 text-red-700 px-3 py-2 text-xs">
+              <div className="mb-2 rounded-xl bg-red-500/15 border border-red-400/60 text-red-100 px-3 py-2 text-xs">
                 {pinError}
               </div>
             )}
             {pinMessage && (
-              <div className="mb-2 rounded-md bg-emerald-100 text-emerald-700 px-3 py-2 text-xs">
+              <div className="mb-2 rounded-xl bg-emerald-500/15 border border-emerald-400/60 text-emerald-100 px-3 py-2 text-xs">
                 {pinMessage}
               </div>
             )}
 
             <form onSubmit={handleSubmitPin} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium mb-1">
+                <label className="block text-xs font-medium mb-1 text-slate-100">
                   PIN 6 หลัก
                 </label>
                 <input
@@ -573,14 +626,14 @@ export default function RewardPointsClient() {
                   value={pinInput}
                   onChange={(e) => setPinInput(e.target.value)}
                   placeholder="เช่น 349990"
-                  className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full rounded-xl border border-white/15 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/80 focus:border-sky-400/80"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={pinLoading}
-                className="w-full rounded-md bg-sky-600 text-white py-2 text-sm font-medium hover:bg-sky-700 disabled:opacity-50"
+                className="w-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-400 text-slate-950 py-2 text-sm font-medium shadow-lg shadow-sky-500/40 hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {pinLoading ? "กำลังใช้ PIN..." : "ยืนยันการใช้ PIN"}
               </button>
@@ -593,13 +646,13 @@ export default function RewardPointsClient() {
                 setPinError(null);
                 setPinMessage(null);
               }}
-              className="mt-3 w-full text-center text-xs text-slate-500 hover:underline"
+              className="mt-3 w-full text-center text-xs text-slate-300 hover:underline"
             >
               ปิดหน้าต่าง
             </button>
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }

@@ -90,59 +90,91 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100">
-      <div className="w-full max-w-md bg-white shadow-md rounded-xl p-6">
-        <h1 className="text-2xl font-bold mb-4 text-center">
-          เข้าสู่ระบบสะสมแต้ม
-        </h1>
+    <main className="relative min-h-screen flex items-center justify-center bg-slate-950 overflow-hidden px-4">
+      {/* แบ็กกราวด์แบบ Liquid Glass */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 -left-24 h-64 w-64 rounded-full bg-sky-500/30 blur-3xl" />
+        <div className="absolute top-1/2 -right-32 h-72 w-72 rounded-full bg-emerald-400/25 blur-3xl" />
+        <div className="absolute -bottom-40 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-purple-500/25 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),transparent_55%)]" />
+      </div>
 
-        {error && (
-          <div className="mb-3 rounded-md bg-red-100 text-red-700 px-3 py-2 text-sm">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              อีเมล หรือชื่อผู้ใช้ / เบอร์โทร
-            </label>
-            <input
-              type="text"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="เช่น ph หรือ 063xxxxxxx หรือ email@email.com"
-              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">รหัสผ่าน</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-            />
+      {/* การ์ดล็อกอินแบบ glass */}
+      <div className="relative z-10 w-full max-w-md">
+        <div className="rounded-3xl border border-white/15 bg-white/10 backdrop-blur-2xl shadow-[0_20px_80px_rgba(15,23,42,0.9)] p-7 md:p-8 text-white">
+          {/* ส่วนหัว */}
+          <div className="mb-6 text-center">
+            <div className="inline-flex items-center justify-center mb-3">
+              <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-sky-400 via-emerald-400 to-indigo-500 flex items-center justify-center shadow-lg shadow-sky-500/40">
+                <span className="text-lg font-bold">P</span>
+              </div>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
+              เข้าสู่ระบบสะสมแต้ม
+            </h1>
+            <p className="mt-1 text-xs md:text-sm text-slate-200/80">
+              ใช้อีเมล, ชื่อผู้ใช้ หรือเบอร์โทรที่ลงทะเบียนไว้ในการเข้าสู่ระบบ
+            </p>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-md bg-sky-600 text-white py-2 text-sm font-medium hover:bg-sky-700 disabled:opacity-50"
-          >
-            {loading ? "กำลังกำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
-          </button>
-        </form>
+          {error && (
+            <div className="mb-4 rounded-xl bg-red-500/15 border border-red-400/60 text-red-100 px-3 py-2 text-xs md:text-sm">
+              {error}
+            </div>
+          )}
 
-        <p className="mt-4 text-center text-sm">
-          ยังไม่มีบัญชี?{" "}
-          <a href="/register" className="text-sky-600 hover:underline">
-            สมัครสมาชิก
-          </a>
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            <div>
+              <label className="block text-xs md:text-sm font-medium mb-1 text-slate-100">
+                อีเมล หรือชื่อผู้ใช้ / เบอร์โทร
+              </label>
+              <input
+                type="text"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="เช่น ph หรือ 063xxxxxxx หรือ email@email.com"
+                className="w-full rounded-xl border border-white/15 bg-slate-900/40 px-3 py-2.5 text-sm text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/80 focus:border-sky-400/80"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs md:text-sm font-medium mb-1 text-slate-100">
+                รหัสผ่าน
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full rounded-xl border border-white/15 bg-slate-900/40 px-3 py-2.5 text-sm text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/80 focus:border-sky-400/80"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-1 inline-flex items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-emerald-400 py-2.5 text-sm font-medium text-slate-950 shadow-lg shadow-sky-500/40 hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed transition"
+            >
+              {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
+            </button>
+          </form>
+
+          <p className="mt-5 text-center text-xs md:text-sm text-slate-200/80">
+            ยังไม่มีบัญชี?{" "}
+            <a
+              href="/register"
+              className="font-medium text-sky-300 hover:text-sky-200 hover:underline"
+            >
+              สมัครสมาชิก
+            </a>
+          </p>
+        </div>
+
+        {/* ข้อความเล็ก ๆ ข้างล่าง */}
+        <p className="mt-3 text-center text-[11px] text-slate-300/70">
+          Points Loyalty – ระบบสะสมแต้มสำหรับร้านค้า &amp; ลูกค้าประจำ
         </p>
       </div>
-    </div>
+    </main>
   );
 }

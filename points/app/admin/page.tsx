@@ -385,8 +385,8 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <p className="text-slate-600">กำลังโหลดข้อมูลผู้ดูแลระบบ...</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+        <p className="text-slate-200">กำลังโหลดข้อมูลผู้ดูแลระบบ...</p>
       </div>
     );
   }
@@ -416,18 +416,41 @@ export default function AdminPage() {
         });
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <main className="relative min-h-screen flex flex-col bg-slate-950 overflow-hidden text-white">
+      {/* Liquid glass background */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 -left-24 h-64 w-64 rounded-full bg-sky-500/30 blur-3xl" />
+        <div className="absolute top-1/3 -right-32 h-72 w-72 rounded-full bg-emerald-400/25 blur-3xl" />
+        <div className="absolute -bottom-40 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-purple-500/25 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),transparent_55%)]" />
+      </div>
+
       {/* Top bar */}
-      <header className="w-full bg-white shadow-sm">
+      <header className="relative z-10 w-full border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
         <div className="max-w-5xl mx-auto flex items-center justify-between px-4 py-3">
-          <h1 className="font-semibold text-lg">Admin Dashboard</h1>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-500">
+            <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-sky-400 via-emerald-400 to-indigo-500 flex items-center justify-center shadow-md shadow-sky-500/40">
+              <span className="text-sm font-bold text-slate-950">A</span>
+            </div>
+            <div>
+              <h1 className="text-sm md:text-base font-semibold text-white">
+                Admin Dashboard
+              </h1>
+              <p className="text-[11px] text-slate-200/80">
+                จัดการแต้มสะสม / PIN / ลูกค้า
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="hidden md:inline text-xs text-slate-200/80">
               เข้าสู่ระบบในชื่อ: {user.email}
+            </span>
+            <span className="md:hidden text-xs text-slate-200/80">
+              {user.email}
             </span>
             <button
               onClick={handleSignOut}
-              className="text-sm text-red-600 hover:underline"
+              className="text-xs md:text-sm text-red-300 hover:text-red-200 hover:underline"
             >
               ออกจากระบบ
             </button>
@@ -436,140 +459,166 @@ export default function AdminPage() {
       </header>
 
       {/* Content */}
-      <main className="w-full max-w-3xl mx-auto px-4 py-6 space-y-4">
-        {/* กล่องสำหรับสร้าง QR / PIN / ลิงก์รับแต้ม */}
-        <section className="bg-white rounded-xl shadow-sm p-4 md:p-5">
-          <h2 className="text-base font-semibold mb-2">
-            สร้าง QR / PIN / ลิงก์รับแต้ม
-          </h2>
-          <p className="text-sm text-slate-600 mb-3">
-            ใช้ส่วนนี้เพื่อสร้างรหัส PIN และลิงก์สำหรับให้ลูกค้าสแกนหรือกรอก
-            เพื่อรับแต้มสะสมจากร้านของคุณ
-          </p>
-
-          <div className="flex flex-col md:flex-row md:items-end gap-3 mb-3">
+      <div className="relative z-10 w-full max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-5 md:space-y-6">
+        {/* แถวบน: สร้าง PIN / โปรไฟล์แอดมินเล็ก ๆ */}
+        <section className="rounded-3xl border border-white/15 bg-white/10 backdrop-blur-2xl shadow-[0_18px_60px_rgba(15,23,42,0.9)] p-5 md:p-6">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-5">
             <div className="flex-1">
-              <label className="block text-xs font-medium mb-1">
-                จำนวนแต้มที่ลูกค้าจะได้รับต่อ 1 ครั้ง
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={rewardPoints || ""}
-                onChange={(e) => setRewardPoints(Number(e.target.value))}
-                className="w-full md:w-40 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-              />
-              <p className="text-[11px] text-slate-500 mt-1">
-                เช่น กำหนด 1 แต้มต่อการสแกน 1 ครั้ง
+              <h2 className="text-base md:text-lg font-semibold mb-1">
+                สร้าง QR / PIN / ลิงก์รับแต้ม
+              </h2>
+              <p className="text-xs md:text-sm text-slate-200/80 mb-4">
+                ใช้ส่วนนี้เพื่อสร้างรหัส PIN และลิงก์สำหรับให้ลูกค้าสแกนหรือกรอก
+                เพื่อรับแต้มสะสมจากร้านของคุณ
               </p>
+
+              <div className="flex flex-col md:flex-row md:items-end gap-3 mb-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium mb-1 text-slate-100">
+                    จำนวนแต้มที่ลูกค้าจะได้รับต่อ 1 ครั้ง
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={rewardPoints || ""}
+                    onChange={(e) => setRewardPoints(Number(e.target.value))}
+                    className="w-full md:w-40 rounded-xl border border-white/20 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/80 focus:border-sky-400/80"
+                  />
+                  <p className="text-[11px] text-slate-300 mt-1">
+                    เช่น กำหนด 1 แต้มต่อการสแกน 1 ครั้ง
+                  </p>
+                </div>
+
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleGeneratePinAndLink}
+                    className="rounded-full bg-gradient-to-r from-sky-500 to-emerald-400 text-slate-950 px-4 py-2 text-sm font-medium shadow-lg shadow-sky-500/40 hover:opacity-95"
+                  >
+                    สร้าง PIN + ลิงก์รับแต้ม
+                  </button>
+                </div>
+              </div>
+
+              {generatedPin && (
+                <div className="mt-3 rounded-2xl bg-slate-950/50 border border-white/15 p-3 space-y-3">
+                  <div className="text-sm">
+                    <span className="font-medium text-slate-50">
+                      PIN ที่สร้าง:
+                    </span>{" "}
+                    <span className="font-mono text-base text-emerald-300">
+                      {generatedPin}
+                    </span>
+                  </div>
+
+                  <div className="text-[11px] text-slate-300">
+                    เมื่อลูกค้าใส่ PIN นี้หรือสแกน QR / เปิดลิงก์ด้านล่าง
+                    จะได้รับแต้มตามที่กำหนด
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-4 items-start">
+                    {/* ลิงก์ */}
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium mb-1 text-slate-100">
+                        ลิงก์รับแต้ม (นำไปแปะใน QR code หรือส่งให้ลูกค้า)
+                      </label>
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          readOnly
+                          value={generatedLink}
+                          className="flex-1 rounded-xl border border-white/15 bg-slate-900/70 px-3 py-2 text-[11px] md:text-xs text-slate-100"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleCopyLink}
+                          className="rounded-full bg-slate-50 text-slate-900 px-3 py-2 text-[11px] font-medium hover:bg-white"
+                        >
+                          คัดลอก
+                        </button>
+                      </div>
+                      {copyStatus === "success" && (
+                        <p className="text-[11px] text-emerald-300 mt-1">
+                          คัดลอกลิงก์เรียบร้อยแล้ว
+                        </p>
+                      )}
+                      {copyStatus === "error" && (
+                        <p className="text-[11px] text-red-300 mt-1">
+                          เบราว์เซอร์ไม่รองรับการคัดลอกอัตโนมัติ
+                          กรุณาเลือกและคัดลอกเอง
+                        </p>
+                      )}
+                    </div>
+
+                    {/* QR CODE */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[11px] font-medium mb-2 text-slate-100">
+                        QR Code สำหรับลูกค้าสแกน
+                      </span>
+                      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+                        <QRCode value={generatedLink || " "} size={144} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-slate-300">
+                    * คุณสามารถพิมพ์ QR นี้ไปติดที่ร้าน หรือบันทึกเป็นรูป
+                    แล้วนำไปใช้งานในสื่ออื่น ๆ ได้
+                  </p>
+                </div>
+              )}
             </div>
 
-            <div>
-              <button
-                type="button"
-                onClick={handleGeneratePinAndLink}
-                className="rounded-md bg-sky-600 text-white px-4 py-2 text-sm font-medium hover:bg-sky-700"
-              >
-                สร้าง PIN + ลิงก์รับแต้ม
-              </button>
+            {/* โปรไฟล์แอดมิน / สรุปสั้น ๆ */}
+            <div className="w-full md:w-60 rounded-2xl border border-white/20 bg-slate-900/70 p-4 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-sky-400 to-emerald-400 flex items-center justify-center text-slate-950 font-bold text-sm">
+                  {(user.email || "A").charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="text-xs text-slate-200/90">Admin</p>
+                  <p className="text-[11px] text-slate-300 break-all">
+                    {user.email}
+                  </p>
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-300">
+                จัดการแต้มลูกค้า สร้าง PIN และตรวจสอบประวัติการใช้งานระบบสะสม
+                แต้มจากที่เดียว
+              </div>
             </div>
           </div>
 
-          {generatedPin && (
-            <div className="mt-3 rounded-lg bg-slate-50 border border-slate-200 p-3 space-y-3">
-              <div className="text-sm">
-                <span className="font-medium">PIN ที่สร้าง:</span>{" "}
-                <span className="font-mono text-base">{generatedPin}</span>
-              </div>
-
-              <div className="text-xs text-slate-600">
-                เมื่อลูกค้าใส่ PIN นี้หรือสแกน QR / เปิดลิงก์ด้านล่าง
-                (หลังจากคุณทำระบบฝั่งลูกค้า/สแกนแล้ว)
-                จะได้รับแต้มตามที่กำหนด
-              </div>
-
-              <div className="flex flex-col md:flex-row gap-4 items-start">
-                {/* ลิงก์ */}
-                <div className="flex-1">
-                  <label className="block text-xs font-medium mb-1">
-                    ลิงก์รับแต้ม (นำไปแปะใน QR code หรือส่งให้ลูกค้า)
-                  </label>
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="text"
-                      readOnly
-                      value={generatedLink}
-                      className="flex-1 rounded-md border px-3 py-2 text-xs bg-slate-100"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleCopyLink}
-                      className="rounded-md bg-slate-800 text-white px-3 py-2 text-xs font-medium hover:bg-slate-900"
-                    >
-                      คัดลอก
-                    </button>
-                  </div>
-                  {copyStatus === "success" && (
-                    <p className="text-[11px] text-emerald-600 mt-1">
-                      คัดลอกลิงก์เรียบร้อยแล้ว
-                    </p>
-                  )}
-                  {copyStatus === "error" && (
-                    <p className="text-[11px] text-red-500 mt-1">
-                      เบราว์เซอร์ไม่รองรับการคัดลอกอัตโนมัติ
-                      กรุณาเลือกและคัดลอกเอง
-                    </p>
-                  )}
-                </div>
-
-                {/* QR CODE */}
-                <div className="flex flex-col items-center">
-                  <span className="text-xs font-medium mb-2">
-                    QR Code สำหรับลูกค้าสแกน
-                  </span>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                    <QRCode value={generatedLink} size={144} />
-                  </div>
-                </div>
-              </div>
-
-              <p className="text-[11px] text-slate-500">
-                * คุณสามารถพิมพ์ QR นี้ไปติดที่ร้าน หรือบันทึกเป็นรูป
-                แล้วนำไปใช้งานในสื่ออื่น ๆ ได้
-              </p>
-            </div>
-          )}
-
           {/* ประวัติการสร้าง PIN ล่าสุด */}
-          <div className="mt-4 border-t border-slate-200 pt-3">
-            <h3 className="text-xs font-semibold text-slate-700 mb-2">
+          <div className="mt-5 border-t border-white/10 pt-3">
+            <h3 className="text-xs font-semibold text-slate-100 mb-2">
               ประวัติการสร้าง PIN ล่าสุด
             </h3>
             {loadingPins ? (
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-slate-300">
                 กำลังโหลดประวัติการสร้าง PIN...
               </p>
             ) : pinsError ? (
-              <p className="text-[11px] text-red-500">{pinsError}</p>
+              <p className="text-[11px] text-red-300">{pinsError}</p>
             ) : pinHistory.length === 0 ? (
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-slate-300">
                 ยังไม่เคยสร้าง PIN มาก่อน
               </p>
             ) : (
-              <ul className="space-y-1 text-[11px] text-slate-600">
+              <ul className="space-y-1 text-[11px] text-slate-200">
                 {pinHistory.map((p) => {
                   const time = p.createdAt?.toDate
                     ? p.createdAt.toDate().toLocaleString("th-TH")
                     : "-";
                   const statusLabel = p.used ? "ใช้แล้ว" : "ยังไม่ได้ใช้";
                   const statusClass = p.used
-                    ? "text-amber-600"
-                    : "text-emerald-600";
+                    ? "text-amber-300"
+                    : "text-emerald-300";
 
                   return (
                     <li
                       key={p.id}
-                      className="flex justify-between border-b border-dashed border-slate-200 pb-1 last:border-b-0"
+                      className="flex justify-between border-b border-white/10 pb-1 last:border-b-0"
                     >
                       <span>
                         PIN {p.pin} — {p.points} แต้ม{" "}
@@ -587,29 +636,29 @@ export default function AdminPage() {
         </section>
 
         {/* จัดการลูกค้า */}
-        <section className="bg-white rounded-xl shadow-sm p-4 md:p-5">
+        <section className="rounded-3xl border border-white/15 bg-white/10 backdrop-blur-2xl shadow-[0_18px_60px_rgba(15,23,42,0.9)] p-5 md:p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
-            <h2 className="text-base font-semibold">
+            <h2 className="text-base md:text-lg font-semibold text-white">
               จัดการลูกค้า (ค้นหา / เพิ่ม-หักแต้ม / ดูประวัติ)
             </h2>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full md:w-auto">
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="ค้นหาจากชื่อ, เบอร์โทร, หรืออีเมล"
-                className="w-full md:w-72 rounded-md border px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="w-full md:w-72 rounded-full border border-white/20 bg-slate-900/60 px-3 py-2 text-xs text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/80 focus:border-sky-400/80"
               />
             </div>
           </div>
 
           {globalError && (
-            <div className="mb-2 rounded-md bg-red-100 text-red-700 px-3 py-2 text-xs">
+            <div className="mb-2 rounded-xl bg-red-500/15 border border-red-400/60 text-red-100 px-3 py-2 text-xs">
               {globalError}
             </div>
           )}
           {globalMessage && (
-            <div className="mb-2 rounded-md bg-emerald-100 text-emerald-700 px-3 py-2 text-xs">
+            <div className="mb-2 rounded-xl bg-emerald-500/15 border border-emerald-400/60 text-emerald-100 px-3 py-2 text-xs">
               {globalMessage}
             </div>
           )}
@@ -617,7 +666,7 @@ export default function AdminPage() {
           <div className="mt-2 overflow-x-auto">
             <table className="w-full text-sm border-separate border-spacing-y-1">
               <thead>
-                <tr className="text-xs text-slate-500">
+                <tr className="text-xs text-slate-200/80">
                   <th className="text-left px-3 py-1">ลูกค้า</th>
                   <th className="text-left px-3 py-1">เบอร์โทร</th>
                   <th className="text-left px-3 py-1">อีเมล</th>
@@ -631,7 +680,7 @@ export default function AdminPage() {
                   <tr>
                     <td
                       colSpan={6}
-                      className="text-center text-xs text-slate-500 py-4"
+                      className="text-center text-xs text-slate-300 py-4"
                     >
                       ยังไม่มีลูกค้าหรือไม่พบข้อมูลที่ค้นหา
                     </td>
@@ -640,23 +689,26 @@ export default function AdminPage() {
                   filteredUsers.map((u) => {
                     const delta = adjustInputs[u.uid] ?? 10; // default 10 แต้ม
                     return (
-                      <tr key={u.uid} className="bg-slate-50 rounded-lg">
+                      <tr
+                        key={u.uid}
+                        className="bg-slate-950/60 rounded-xl border border-white/10"
+                      >
                         <td className="px-3 py-2 align-top">
-                          <div className="font-medium text-sm">
+                          <div className="font-medium text-sm text-white">
                             {u.displayName || "-"}
                           </div>
-                          <div className="text-[11px] text-slate-500">
+                          <div className="text-[11px] text-slate-300">
                             UID: {u.uid.substring(0, 8)}...
                           </div>
                         </td>
-                        <td className="px-3 py-2 align-top text-xs">
+                        <td className="px-3 py-2 align-top text-xs text-slate-200">
                           {u.phone || "-"}
                         </td>
-                        <td className="px-3 py-2 align-top text-xs">
+                        <td className="px-3 py-2 align-top text-xs text-slate-200">
                           {u.email}
                         </td>
                         <td className="px-3 py-2 align-top text-center">
-                          <span className="inline-flex items-center justify-center rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+                          <span className="inline-flex items-center justify-center rounded-full bg-sky-500/10 border border-sky-400/50 px-3 py-1 text-xs font-semibold text-sky-200">
                             {u.points} แต้ม
                           </span>
                         </td>
@@ -669,19 +721,19 @@ export default function AdminPage() {
                               onChange={(e) =>
                                 handleChangeAdjust(u.uid, e.target.value)
                               }
-                              className="w-16 rounded-md border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500"
+                              className="w-16 rounded-xl border border-white/20 bg-slate-900/70 px-2 py-1 text-xs text-slate-50 focus:outline-none focus:ring-1 focus:ring-sky-500/80"
                             />
                             <button
                               onClick={() => handleAdjustPoints(u, "add")}
                               disabled={adjustingUserId === u.uid}
-                              className="rounded-md bg-emerald-600 text-white px-2 py-1 text-xs font-medium hover:bg-emerald-700 disabled:opacity-50"
+                              className="rounded-full bg-emerald-500 text-slate-950 px-2.5 py-1 text-xs font-medium hover:bg-emerald-400 disabled:opacity-50"
                             >
                               + เพิ่ม
                             </button>
                             <button
                               onClick={() => handleAdjustPoints(u, "subtract")}
                               disabled={adjustingUserId === u.uid}
-                              className="rounded-md bg-amber-600 text-white px-2 py-1 text-xs font-medium hover:bg-amber-700 disabled:opacity-50"
+                              className="rounded-full bg-amber-400 text-slate-950 px-2.5 py-1 text-xs font-medium hover:bg-amber-300 disabled:opacity-50"
                             >
                               - หัก
                             </button>
@@ -690,7 +742,7 @@ export default function AdminPage() {
                         <td className="px-3 py-2 align-top">
                           <button
                             onClick={() => openLogsModal(u)}
-                            className="text-xs text-sky-600 hover:underline"
+                            className="text-xs text-sky-300 hover:text-sky-200 hover:underline"
                           >
                             ดูประวัติ
                           </button>
@@ -703,16 +755,16 @@ export default function AdminPage() {
             </table>
           </div>
         </section>
-      </main>
+      </div>
 
       {/* Modal ดูประวัติแต้มของลูกค้า */}
       {logsModalUser && (
         <div
-          className="fixed inset-0 z-30 flex items-center justify-center bg-black/40"
+          className="fixed inset-0 z-30 flex items-center justify-center bg-black/50 px-4"
           onClick={closeLogsModal}
         >
           <div
-            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl max-h-[80vh] overflow-y-auto"
+            className="w-full max-w-md rounded-2xl border border-white/20 bg-slate-950/95 backdrop-blur-2xl p-5 shadow-[0_18px_60px_rgba(15,23,42,0.9)] max-h-[80vh] overflow-y-auto text-white"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-3">
@@ -720,7 +772,7 @@ export default function AdminPage() {
                 <h2 className="text-sm font-semibold">
                   ประวัติการใช้สิทธิ์ / ปรับแต้ม
                 </h2>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-slate-300">
                   ลูกค้า:{" "}
                   {logsModalUser.displayName ||
                     logsModalUser.phone ||
@@ -730,16 +782,16 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={closeLogsModal}
-                className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+                className="text-slate-400 hover:text-slate-100 text-lg leading-none"
               >
                 ×
               </button>
             </div>
 
             {loadingLogs ? (
-              <p className="text-xs text-slate-500">กำลังโหลดประวัติ...</p>
+              <p className="text-xs text-slate-300">กำลังโหลดประวัติ...</p>
             ) : logs.length === 0 ? (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-300">
                 ยังไม่มีประวัติการใช้สิทธิ์หรือการปรับแต้ม
               </p>
             ) : (
@@ -751,8 +803,8 @@ export default function AdminPage() {
                     onClick={() => setLogsFilter("all")}
                     className={`px-3 py-1 rounded-full border ${
                       logsFilter === "all"
-                        ? "bg-sky-600 text-white border-sky-600"
-                        : "bg-white text-slate-600 border-slate-200"
+                        ? "bg-sky-500 text-slate-950 border-sky-400"
+                        : "bg-slate-950/70 text-slate-200 border-white/20"
                     }`}
                   >
                     ทั้งหมด
@@ -762,8 +814,8 @@ export default function AdminPage() {
                     onClick={() => setLogsFilter("redeem")}
                     className={`px-3 py-1 rounded-full border ${
                       logsFilter === "redeem"
-                        ? "bg-sky-600 text-white border-sky-600"
-                        : "bg-white text-slate-600 border-slate-200"
+                        ? "bg-sky-500 text-slate-950 border-sky-400"
+                        : "bg-slate-950/70 text-slate-200 border-white/20"
                     }`}
                   >
                     การใช้สิทธิ์
@@ -773,8 +825,8 @@ export default function AdminPage() {
                     onClick={() => setLogsFilter("earn")}
                     className={`px-3 py-1 rounded-full border ${
                       logsFilter === "earn"
-                        ? "bg-sky-600 text-white border-sky-600"
-                        : "bg-white text-slate-600 border-slate-200"
+                        ? "bg-sky-500 text-slate-950 border-sky-400"
+                        : "bg-slate-950/70 text-slate-200 border-white/20"
                     }`}
                   >
                     รับแต้ม
@@ -784,8 +836,8 @@ export default function AdminPage() {
                     onClick={() => setLogsFilter("admin")}
                     className={`px-3 py-1 rounded-full border ${
                       logsFilter === "admin"
-                        ? "bg-sky-600 text-white border-sky-600"
-                        : "bg-white text-slate-600 border-slate-200"
+                        ? "bg-sky-500 text-slate-950 border-sky-400"
+                        : "bg-slate-950/70 text-slate-200 border-white/20"
                     }`}
                   >
                     การปรับของแอดมิน
@@ -793,7 +845,7 @@ export default function AdminPage() {
                 </div>
 
                 {filteredLogsForModal.length === 0 ? (
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-300">
                     ไม่มีรายการในหมวดหมู่นี้
                   </p>
                 ) : (
@@ -818,22 +870,24 @@ export default function AdminPage() {
                       return (
                         <li
                           key={log.id}
-                          className="rounded-md border border-slate-200 px-3 py-2"
+                          className="rounded-xl border border-white/20 bg-slate-900/80 px-3 py-2"
                         >
                           <div className="flex justify-between mb-1">
-                            <span className="font-medium">{typeLabel}</span>
+                            <span className="font-medium text-slate-50">
+                              {typeLabel}
+                            </span>
                             <span
                               className={
                                 log.delta >= 0
-                                  ? "text-emerald-600 font-semibold"
-                                  : "text-amber-700 font-semibold"
+                                  ? "text-emerald-300 font-semibold"
+                                  : "text-amber-300 font-semibold"
                               }
                             >
                               {sign}
                               {log.delta} แต้ม
                             </span>
                           </div>
-                          <div className="text-[11px] text-slate-500">
+                          <div className="text-[11px] text-slate-300">
                             <div>วันที่: {time}</div>
                             {log.adminEmail && (
                               <div>ผู้ดำเนินการ: {log.adminEmail}</div>
@@ -852,7 +906,7 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={closeLogsModal}
-                className="rounded-md bg-slate-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-900"
+                className="rounded-full bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-900 hover:bg-white"
               >
                 ปิด
               </button>
@@ -860,6 +914,6 @@ export default function AdminPage() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }
