@@ -3,6 +3,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { auth, db } from "@/lib/firebase";
 import {
   onAuthStateChanged,
@@ -149,7 +150,7 @@ export default function RewardPointsClient() {
 
   useEffect(() => {
     if (!user) return;
-    fetchRedeemLogsForUser(user.uid);
+    void fetchRedeemLogsForUser(user.uid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -329,7 +330,7 @@ export default function RewardPointsClient() {
 
       // โหลดประวัติใหม่
       if (user) {
-        fetchRedeemLogsForUser(user.uid);
+        void fetchRedeemLogsForUser(user.uid);
       }
     } catch (err: any) {
       console.error("Redeem error:", err);
@@ -419,73 +420,77 @@ export default function RewardPointsClient() {
 
         {/* การ์ดแต้มสะสมแบบ Brown cafe */}
         <section className="flex justify-center">
-          <div className="w-full max-w-md bg-[#4b3326] text-white rounded-3xl shadow-lg overflow-hidden">
-            {/* หัวการ์ดทึบสีน้ำตาลให้เต็มทั้งใบ */}
-            <div className="h-8 bg-[#4b3326]" />
+          <div className="w-full max-w-md bg-[#4b3326] text-white rounded-3xl shadow-lg px-6 pt-14 pb-8 flex flex-col items-center">
+            {/* โปรไฟล์ร้านเป็นวงกลม */}
+            <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center shadow-md overflow-hidden -mt-16 mb-3 border-4 border-[#4b3326]">
+              {/* 
+                นำรูปแก้วกาแฟจากเน็ตมาดาวน์โหลดไว้ใน public/images/coffee-cup.png 
+                หรือเปลี่ยน path ด้านล่างให้ตรงกับไฟล์ของคุณ
+              */}
+              <Image
+                src="/images/coffee-cup.png"
+                alt="Brown cafe"
+                width={96}
+                height={96}
+                className="w-full h-full object-cover"
+              />
+            </div>
 
-            {/* เนื้อหา */}
-            <div className="px-6 pb-6">
-              <div className="flex flex-col items-center -mt-10">
-                <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-md">
-                  <span className="text-3xl">☕</span>
-                </div>
-                <h3 className="mt-3 text-xl font-semibold">Brown cafe</h3>
+            <h3 className="mt-1 text-xl font-semibold">Brown cafe</h3>
 
-                <p className="mt-2 text-xs text-slate-100">
-                  อีก {stampsRemaining} แต้มจะได้รับของรางวัล
-                </p>
+            <p className="mt-2 text-xs text-slate-100">
+              อีก {stampsRemaining} แต้มจะได้รับของรางวัล
+            </p>
 
-                <button
-                  type="button"
-                  disabled={!canRedeem || redeemLoading}
-                  onClick={handleRedeem}
-                  className={`mt-2 inline-flex items-center gap-1 rounded-full px-4 py-1.5 text-xs font-semibold shadow-sm ${
-                    canRedeem
-                      ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                      : "bg-slate-500 text-slate-200 cursor-not-allowed"
-                  }`}
+            <button
+              type="button"
+              disabled={!canRedeem || redeemLoading}
+              onClick={handleRedeem}
+              className={`mt-3 inline-flex items-center gap-1 rounded-full px-4 py-1.5 text-xs font-semibold shadow-sm ${
+                canRedeem
+                  ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+                  : "bg-slate-500 text-slate-200 cursor-not-allowed"
+              }`}
+            >
+              ใช้แต้มสะสม
+            </button>
+
+            {redeemMessage && (
+              <p className="mt-2 text-[11px] text-emerald-300">
+                {redeemMessage}
+              </p>
+            )}
+            {redeemError && (
+              <p className="mt-2 text-[11px] text-red-300">{redeemError}</p>
+            )}
+
+            {/* แถว stamp 10 ช่อง */}
+            <div className="mt-5 grid grid-cols-5 gap-2 justify-items-center">
+              {Array.from({ length: stampsFilled }).map((_, i) => (
+                <div
+                  key={`f-${i}`}
+                  className="w-10 h-10 rounded-full border-2 border-emerald-400 bg-emerald-500 flex items-center justify-center text-[10px] font-bold"
                 >
-                  ใช้แต้มสะสม
-                </button>
+                  STAMP
+                </div>
+              ))}
+              {Array.from({ length: stampsEmpty }).map((_, i) => (
+                <div
+                  key={`e-${i}`}
+                  className="w-10 h-10 rounded-full border-2 border-slate-400 bg-transparent flex items-center justify-center text-[10px] text-slate-300"
+                >
+                  +
+                </div>
+              ))}
+            </div>
 
-                {redeemMessage && (
-                  <p className="mt-2 text-[11px] text-emerald-300">
-                    {redeemMessage}
-                  </p>
-                )}
-                {redeemError && (
-                  <p className="mt-2 text-[11px] text-red-300">{redeemError}</p>
-                )}
-              </div>
-
-              {/* แถว stamp 10 ช่อง */}
-              <div className="mt-4 grid grid-cols-5 gap-2 justify-items-center">
-                {Array.from({ length: stampsFilled }).map((_, i) => (
-                  <div
-                    key={`f-${i}`}
-                    className="w-10 h-10 rounded-full border-2 border-emerald-400 bg-emerald-500 flex items-center justify-center text-[10px] font-bold"
-                  >
-                    STAMP
-                  </div>
-                ))}
-                {Array.from({ length: stampsEmpty }).map((_, i) => (
-                  <div
-                    key={`e-${i}`}
-                    className="w-10 h-10 rounded-full border-2 border-slate-400 bg-transparent flex items-center justify-center text-[10px] text-slate-300"
-                  >
-                    +
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-4 text-center">
-                <p className="text-[11px] text-slate-200">
-                  ต่อเมื่อสะสมครบ 10 แต้มจึงจะใช้สิทธิ์ได้
-                </p>
-                <p className="text-[11px] text-emerald-300 mt-1">
-                  แต้มทั้งหมดของคุณตอนนี้: {currentPoints} แต้ม
-                </p>
-              </div>
+            <div className="mt-4 text-center">
+              <p className="text-[11px] text-slate-200">
+                สะสมครบ 10 แต้มจึงจะใช้สิทธิ์ได้
+              </p>
+              <p className="text-[11px] text-emerald-300 mt-1">
+                แต้มทั้งหมดของคุณตอนนี้: {currentPoints} แต้ม
+              </p>
             </div>
           </div>
         </section>
