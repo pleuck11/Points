@@ -62,7 +62,7 @@ export default function RegisterPage() {
       if (usernameIdxSnap.exists()) {
         const exist = usernameIdxSnap.data() as LoginIndexDoc;
         setError(
-          `ชื่อผู้ใช้ "${uname}" มีผู้ใช้งานแล้ว (เชื่อมกับอีเมล ${exist.email || "-"} )`
+          `ชื่อผู้ใช้ "${uname}" มีผู้ใช้งานแล้ว หรือ อีเมล "${email}" มีผู้ใช้งานแล้ว )`
         );
         setLoading(false);
         return;
