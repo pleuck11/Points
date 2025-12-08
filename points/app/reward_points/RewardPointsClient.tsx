@@ -393,7 +393,7 @@ export default function RewardPointsClient() {
                 เมนู ▾
               </button>
               {menuOpen && (
-                <div className="absolute right-0 mt-2 w-44 rounded-2xl border border-white/15 bg-slate-900/95 backdrop-blur-xl shadow-xl text-xs md:text-sm z-20">
+                <div className="absolute right-0 mt-2 w-44 rounded-2xl border border-white/15 bg-slate-900/95 backdrop-blur-xl shadow-xl text-xs md:text-sm z-50">
                   <button
                     type="button"
                     onClick={() => {
