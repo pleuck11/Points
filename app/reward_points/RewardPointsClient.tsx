@@ -63,6 +63,8 @@ export default function RewardPointsClient() {
   const [redeemLoading, setRedeemLoading] = useState(false);
   const [redeemMessage, setRedeemMessage] = useState<string | null>(null);
   const [redeemError, setRedeemError] = useState<string | null>(null);
+  // confirm modal for redeem
+  const [redeemConfirmOpen, setRedeemConfirmOpen] = useState(false);
 
   // ประวัติการใช้แต้ม (แลกรางวัลครบ 10 แต้ม)
   const [redeemLogs, setRedeemLogs] = useState<RedeemLog[]>([]);
@@ -493,7 +495,7 @@ export default function RewardPointsClient() {
                 <button
                   type="button"
                   disabled={!canRedeem || redeemLoading}
-                  onClick={handleRedeem}
+                  onClick={() => setRedeemConfirmOpen(true)}
                   className={`mt-2 inline-flex items-center gap-1 rounded-full px-4 py-1.5 text-xs font-semibold shadow-sm ${
                     canRedeem
                       ? "bg-[#f5d8a5] hover:bg-[#f2c883] text-[#3b2615]"
@@ -649,6 +651,48 @@ export default function RewardPointsClient() {
             >
               ปิดหน้าต่าง
             </button>
+          </div>
+        </div>
+      )}
+      {/* Confirm Redeem Modal */}
+      {redeemConfirmOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={() => setRedeemConfirmOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-white/15 bg-slate-900/95 backdrop-blur-2xl p-5 shadow-xl text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-base font-semibold mb-2">ยืนยันการใช้แต้ม</h2>
+            <p className="text-sm text-slate-200/80 mb-4">คุณต้องการใช้ 10 แต้มเพื่อแลกรางวัลหรือไม่?</p>
+
+            {redeemError && (
+              <div className="mb-2 rounded-xl bg-red-500/15 border border-red-400/60 text-red-100 px-3 py-2 text-xs">
+                {redeemError}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setRedeemConfirmOpen(false)}
+                className="flex-1 rounded-full bg-transparent border border-white/10 text-slate-200 py-2 text-sm hover:bg-white/5"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setRedeemConfirmOpen(false);
+                  await handleRedeem();
+                }}
+                disabled={redeemLoading}
+                className="flex-1 rounded-full bg-gradient-to-r from-sky-500 to-emerald-400 text-slate-950 py-2 text-sm font-medium shadow-lg hover:opacity-95 disabled:opacity-60"
+              >
+                {redeemLoading ? "กำลังยืนยัน..." : "ยืนยันการใช้ 10 แต้ม"}
+              </button>
+            </div>
           </div>
         </div>
       )}
