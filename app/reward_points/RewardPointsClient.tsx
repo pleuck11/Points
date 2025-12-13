@@ -357,16 +357,8 @@ export default function RewardPointsClient() {
 
   return (
     <main className="relative min-h-screen flex flex-col bg-slate-950 overflow-hidden">
-      {/* Liquid background */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-32 -left-24 h-64 w-64 rounded-full bg-sky-500/30 blur-3xl" />
-        <div className="absolute top-1/2 -right-32 h-72 w-72 rounded-full bg-emerald-400/25 blur-3xl" />
-        <div className="absolute -bottom-40 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-purple-500/25 blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),transparent_55%)]" />
-      </div>
-
-      {/* Top bar */}
-      <header className="relative z-10 w-full border-b border-white/10 bg-slate-950/60 backdrop-blur-xl">
+       {/* Top bar */}
+      <header className="relative z-40 w-full border-b border-white/10 bg-slate-950/60 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
             <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-sky-400 via-emerald-400 to-indigo-500 flex items-center justify-center shadow-md shadow-sky-500/40">
@@ -427,6 +419,13 @@ export default function RewardPointsClient() {
           </div>
         </div>
       </header>
+      {/* Liquid background */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 -left-24 h-64 w-64 rounded-full bg-sky-500/30 blur-3xl" />
+        <div className="absolute top-1/2 -right-32 h-72 w-72 rounded-full bg-emerald-400/25 blur-3xl" />
+        <div className="absolute -bottom-40 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-purple-500/25 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),transparent_55%)]" />
+      </div>
 
       {/* Content */}
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-6 md:py-10 space-y-5 md:space-y-6">
@@ -484,7 +483,7 @@ export default function RewardPointsClient() {
                   />
                 </div>
                 <h3 className="mt-3 text-xl font-semibold text-[#fdf3df]">
-                  Brown cafe
+                  Store cafe
                 </h3>
 
                 <p className="mt-2 text-xs text-[#f9e8c9]">
@@ -586,7 +585,7 @@ export default function RewardPointsClient() {
       {/* Modal ใส่ PIN */}
       {pinModalOpen && (
         <div
-          className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
           onClick={() => {
             setPinModalOpen(false);
             setPinError(null);

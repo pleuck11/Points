@@ -20,7 +20,7 @@ export default function HomePage() {
               </div>
               <div>
                 <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-                  Points Loyalty
+                  Store cafe
                 </h1>
                 <p className="text-xs md:text-sm text-slate-200/80">
                   ระบบสะสมแต้มสำหรับร้านกาแฟ/ร้านค้าเล็ก ๆ
@@ -78,10 +78,6 @@ export default function HomePage() {
                 เข้าสู่ระบบ
               </a>
             </div>
-
-            <p className="text-[11px] text-slate-200/70 mt-1 md:mt-0">
-              มีบัญชีแอดมินอยู่แล้ว? เข้าสู่ระบบเพื่อจัดการแต้มของลูกค้า
-            </p>
           </div>
         </div>
       </section>

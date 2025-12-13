@@ -172,7 +172,7 @@ export default function LoginPage() {
 
         {/* ข้อความเล็ก ๆ ข้างล่าง */}
         <p className="mt-3 text-center text-[11px] text-slate-300/70">
-          Points Loyalty – ระบบสะสมแต้มสำหรับร้านค้า &amp; ลูกค้าประจำ
+          ระบบสะสมแต้มสำหรับร้านค้า &amp; ลูกค้าประจำ
         </p>
       </div>
     </main>

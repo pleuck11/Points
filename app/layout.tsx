@@ -3,7 +3,7 @@ import "./globals.css";
 import { Suspense } from "react";
 
 export const metadata: Metadata = {
-  title: "Points Loyalty",
+  title: "Points",
   description: "ระบบสะสมแต้มสำหรับร้านค้า",
 };
 
