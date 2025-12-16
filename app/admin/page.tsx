@@ -60,6 +60,14 @@ type PinRecord = {
   usedAt?: any;
 };
 
+export async function createPin(pin: string, points: number) {
+  await setDoc(doc(db, "pins", pin), {
+    points,
+    used: false,
+    createdAt: serverTimestamp(),
+  });
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const [user, setUser] = useState<FirebaseUser | null>(null);
