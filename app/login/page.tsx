@@ -39,7 +39,7 @@ export default function LoginPage() {
       // ถ้าไม่มี @ ให้ถือว่าเป็นชื่อผู้ใช้หรือเบอร์โทร → ไปหาใน login_index
       if (!id.includes("@")) {
         const key = normalizeKey(id);
-        const idxRef = doc(db, "login_index", key);
+        const idxRef = doc(db, "points", "data", "login_index", key);
         const idxSnap = await getDoc(idxRef);
 
         if (!idxSnap.exists()) {
@@ -66,7 +66,7 @@ export default function LoginPage() {
       );
 
       const uid = cred.user.uid;
-      const userRef = doc(db, "users", uid);
+      const userRef = doc(db, "points", "data", "users", uid);
       const userSnap = await getDoc(userRef);
 
       let role: string = "user";

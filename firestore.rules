@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Restaurant project - อนุญาตให้ผู้ใช้ที่ล็อกอินแล้ว (รวม Anonymous) อ่าน/เขียนได้
+    match /restaurant/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Points project - อนุญาตให้ผู้ใช้ที่ล็อกอินแล้ว อ่าน/เขียนได้
+    match /points/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

@@ -61,7 +61,7 @@ type PinRecord = {
 };
 
 export async function createPin(pin: string, points: number) {
-  await setDoc(doc(db, "pins", pin), {
+  await setDoc(doc(db, "points", "data", "pins", pin), {
     points,
     used: false,
     createdAt: serverTimestamp(),
@@ -113,7 +113,7 @@ export default function AdminPage() {
 
       setUser(fbUser);
 
-      const snap = await getDoc(doc(db, "users", fbUser.uid));
+      const snap = await getDoc(doc(db, "points", "data", "users", fbUser.uid));
 
       if (!snap.exists()) {
         setRole("user");
@@ -131,7 +131,7 @@ export default function AdminPage() {
       }
 
       // โหลดรายชื่อลูกค้าทั้งหมด
-      const usersSnap = await getDocs(collection(db, "users"));
+      const usersSnap = await getDocs(collection(db, "points", "data", "users"));
       const list: AppUser[] = usersSnap.docs.map((d) => {
         const u = d.data() as UserRoleDoc;
         return {
@@ -208,7 +208,7 @@ export default function AdminPage() {
     try {
       setAdjustingUserId(targetUser.uid);
 
-      const userRef = doc(db, "users", targetUser.uid);
+      const userRef = doc(db, "points", "data", "users", targetUser.uid);
       await updateDoc(userRef, { points: increment(delta) });
 
       const newPoints = targetUser.points + delta;
@@ -221,7 +221,7 @@ export default function AdminPage() {
       );
 
       // บันทึกประวัติใน pointLogs subcollection
-      await addDoc(collection(db, "users", targetUser.uid, "pointLogs"), {
+      await addDoc(collection(db, "points", "data", "users", targetUser.uid, "pointLogs"), {
         type: "admin_adjust",
         delta,
         newPoints,
@@ -254,7 +254,7 @@ export default function AdminPage() {
 
     try {
       const qLogs = query(
-        collection(db, "users", targetUser.uid, "pointLogs"),
+        collection(db, "points", "data", "users", targetUser.uid, "pointLogs"),
         orderBy("createdAt", "desc"),
         limit(50)
       );
@@ -302,7 +302,7 @@ export default function AdminPage() {
 
     try {
       // สร้างเอกสาร PIN ใน collection "pins"
-      const pinRef = doc(db, "pins", pinStr);
+      const pinRef = doc(db, "points", "data", "pins", pinStr);
       await setDoc(pinRef, {
         points,
         used: false,
@@ -363,7 +363,7 @@ export default function AdminPage() {
         setPinsError(null);
 
         const qPins = query(
-          collection(db, "pins"),
+          collection(db, "points", "data", "pins"),
           orderBy("createdAt", "desc"),
           limit(20)
         );

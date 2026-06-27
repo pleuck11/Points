@@ -89,7 +89,7 @@ export default function RewardPointsClient() {
 
       setUser(fbUser);
 
-      const snap = await getDoc(doc(db, "users", fbUser.uid));
+      const snap = await getDoc(doc(db, "points", "data", "users", fbUser.uid));
       if (snap.exists()) {
         const data = snap.data() as UserDoc;
         setUserDoc({
@@ -118,7 +118,7 @@ export default function RewardPointsClient() {
     try {
       setLoadingRedeemLogs(true);
       const qLogs = query(
-        collection(db, "users", uid, "pointLogs"),
+        collection(db, "points", "data", "users", uid, "pointLogs"),
         orderBy("createdAt", "desc"),
         limit(20)
       );
@@ -190,8 +190,8 @@ export default function RewardPointsClient() {
     try {
       setPinLoading(true);
 
-      const userRef = doc(db, "users", user.uid);
-      const pinRef = doc(db, "pins", pin);
+      const userRef = doc(db, "points", "data", "users", user.uid);
+      const pinRef = doc(db, "points", "data", "pins", pin);
 
       let plusPoints = 0;
 
@@ -224,7 +224,7 @@ export default function RewardPointsClient() {
         });
 
         // เพิ่ม log ใน pointLogs
-        const logRef = doc(collection(db, "users", user.uid, "pointLogs"));
+        const logRef = doc(collection(db, "points", "data", "users", user.uid, "pointLogs"));
         tx.set(logRef, {
           type: "pin_redeem",
           delta: p,
@@ -291,7 +291,7 @@ export default function RewardPointsClient() {
 
     try {
       setRedeemLoading(true);
-      const userRef = doc(db, "users", user.uid);
+      const userRef = doc(db, "points", "data", "users", user.uid);
 
       await runTransaction(db, async (tx) => {
         const userSnap = await tx.get(userRef);
@@ -307,7 +307,7 @@ export default function RewardPointsClient() {
           points: newPoints,
         });
 
-        const logRef = doc(collection(db, "users", user.uid, "pointLogs"));
+        const logRef = doc(collection(db, "points", "data", "users", user.uid, "pointLogs"));
         tx.set(logRef, {
           type: "redeem",
           delta: -stampsPerReward,

@@ -57,7 +57,7 @@ export default function RegisterPage() {
       const phoneKey = normalizePhone(phoneRaw);
 
       // เช็คว่าชื่อผู้ใช้ถูกใช้ไปแล้วหรือยัง
-      const usernameIdxRef = doc(db, "login_index", usernameKey);
+      const usernameIdxRef = doc(db, "points", "data", "login_index", usernameKey);
       const usernameIdxSnap = await getDoc(usernameIdxRef);
       if (usernameIdxSnap.exists()) {
         const exist = usernameIdxSnap.data() as LoginIndexDoc;
@@ -69,7 +69,7 @@ export default function RegisterPage() {
       }
 
       // เช็คว่าเบอร์โทรถูกใช้ไปแล้วหรือยัง
-      const phoneIdxRef = doc(db, "login_index", phoneKey);
+      const phoneIdxRef = doc(db, "points", "data", "login_index", phoneKey);
       const phoneIdxSnap = await getDoc(phoneIdxRef);
       if (phoneIdxSnap.exists()) {
         const exist = phoneIdxSnap.data() as LoginIndexDoc;
@@ -92,7 +92,7 @@ export default function RegisterPage() {
       const uid = cred.user.uid;
 
       // บันทึกข้อมูลลง users/{uid}
-      const userRef = doc(db, "users", uid);
+      const userRef = doc(db, "points", "data", "users", uid);
       await setDoc(userRef, {
         uid,
         displayName: nameForDisplay, // แสดงชื่อจาก username
