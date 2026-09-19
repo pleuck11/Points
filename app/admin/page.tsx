@@ -1,80 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { auth, db } from "@/lib/firebase";
-import {
-  onAuthStateChanged,
-  signOut,
-  User as FirebaseUser,
-} from "firebase/auth";
-import {
-  doc,
-  getDoc,
-  getDocs,
-  collection,
-  updateDoc,
-  increment,
-  addDoc,
-  serverTimestamp,
-  query,
-  orderBy,
-  limit,
-  setDoc,
-} from "firebase/firestore";
-
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import QRCode from "react-qr-code";
+import { useDemo, DemoUser, DemoPinRecord, DemoPointLog } from "@/lib/demo-context";
+import DemoBar from "@/components/DemoBar";
 
-type UserRoleDoc = {
-  role?: string;
-  email?: string;
-  displayName?: string | null;
-  phone?: string;
-  points?: number;
-};
-
-type AppUser = {
-  uid: string;
-  email: string;
-  displayName: string | null;
-  phone: string;
-  points: number;
-  role?: string;
-};
-
-type PointLog = {
-  id: string;
-  delta: number;
-  type?: string;
-  createdAt?: any;
-  source?: string;
-  adminEmail?: string | null;
-};
-
-type PinRecord = {
-  id: string;
-  pin: string;
-  points: number;
-  createdAt?: any;
-  used?: boolean;
-  usedAt?: any;
-};
-
-export async function createPin(pin: string, points: number) {
-  await setDoc(doc(db, "points", "data", "pins", pin), {
-    points,
-    used: false,
-    createdAt: serverTimestamp(),
-  });
+function formatDateTime(ts: any) {
+  if (!ts) return "-";
+  if (typeof ts === "string") return ts;
+  return "-";
 }
 
-export default function AdminPage() {
+function AdminContent() {
   const router = useRouter();
-  const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [role, setRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
 
-  const [users, setUsers] = useState<AppUser[]>([]);
+  const {
+    adminUser,
+    adminCustomers,
+    adminPins,
+    generatePin,
+    adjustCustomerPoints,
+    getCustomerLogs,
+  } = useDemo();
+
   const [search, setSearch] = useState("");
   const [adjustInputs, setAdjustInputs] = useState<Record<string, number>>({});
   const [adjustingUserId, setAdjustingUserId] = useState<string | null>(null);
@@ -82,98 +33,28 @@ export default function AdminPage() {
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [globalMessage, setGlobalMessage] = useState<string | null>(null);
 
-  const [logsModalUser, setLogsModalUser] = useState<AppUser | null>(null);
-  const [logs, setLogs] = useState<PointLog[]>([]);
+  const [logsModalUser, setLogsModalUser] = useState<DemoUser | null>(null);
+  const [logs, setLogs] = useState<DemoPointLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
-  const [logsFilter, setLogsFilter] = useState<
-    "all" | "redeem" | "earn" | "admin"
-  >("all");
+  const [logsFilter, setLogsFilter] = useState<"all" | "redeem" | "earn" | "admin">("all");
 
-  // สำหรับสร้าง PIN + ลิงก์
   const [baseUrl, setBaseUrl] = useState("");
   const [rewardPoints, setRewardPoints] = useState<number>(1);
   const [generatedPin, setGeneratedPin] = useState("");
   const [generatedLink, setGeneratedLink] = useState("");
-  const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "error">(
-    "idle"
-  );
+  const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "error">("idle");
 
-  // ประวัติการสร้าง PIN
-  const [pinHistory, setPinHistory] = useState<PinRecord[]>([]);
-  const [loadingPins, setLoadingPins] = useState(false);
-  const [pinsError, setPinsError] = useState<string | null>(null);
-
-  // ตรวจสอบสิทธิ์ admin และโหลดรายชื่อลูกค้า
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (fbUser) => {
-      if (!fbUser) {
-        router.push("/login");
-        return;
-      }
-
-      setUser(fbUser);
-
-      const snap = await getDoc(doc(db, "points", "data", "users", fbUser.uid));
-
-      if (!snap.exists()) {
-        setRole("user");
-        router.push("/reward_points");
-        return;
-      }
-
-      const data = snap.data() as UserRoleDoc;
-      const userRole = data.role || "user";
-      setRole(userRole);
-
-      if (userRole !== "admin") {
-        router.push("/reward_points");
-        return;
-      }
-
-      // โหลดรายชื่อลูกค้าทั้งหมด
-      const usersSnap = await getDocs(collection(db, "points", "data", "users"));
-      const list: AppUser[] = usersSnap.docs.map((d) => {
-        const u = d.data() as UserRoleDoc;
-        return {
-          uid: d.id,
-          email: u.email || "",
-          displayName: u.displayName ?? null,
-          phone: u.phone || "",
-          points: u.points ?? 0,
-          role: u.role,
-        };
-      });
-
-      // เรียงตามชื่อ
-      list.sort((a, b) => {
-        const nameA = (a.displayName || a.phone || a.email).toLowerCase();
-        const nameB = (b.displayName || b.phone || b.email).toLowerCase();
-        return nameA.localeCompare(nameB);
-      });
-
-      setUsers(list);
-      setLoading(false);
-    });
-
-    return () => unsub();
-  }, [router]);
-
-  // baseUrl สำหรับสร้างลิงก์ (เช่น http://localhost:3000)
   useEffect(() => {
     if (typeof window !== "undefined") {
       setBaseUrl(window.location.origin);
     }
   }, []);
 
-  const handleSignOut = async () => {
-    await signOut(auth);
-    router.push("/login");
+  const handleSignOut = () => {
+    router.push("/");
   };
 
-  // ฟิลเตอร์รายชื่อลูกค้าจาก search + ซ่อนแอดมินเองออกจากตาราง
-  const filteredUsers = users.filter((u) => {
-    if (user && u.uid === user.uid) return false; // ซ่อนแอดมินเอง
-
+  const filteredUsers = adminCustomers.filter((u) => {
     if (!search.trim()) return true;
     const term = search.trim().toLowerCase();
     return (
@@ -191,94 +72,35 @@ export default function AdminPage() {
     }));
   };
 
-  // ปุ่มเพิ่ม / หักแต้มฝั่งแอดมิน
-  const handleAdjustPoints = async (
-    targetUser: AppUser,
-    mode: "add" | "subtract"
-  ) => {
-    if (!user) return;
-
+  const handleAdjustPoints = (targetUser: DemoUser, mode: "add" | "subtract") => {
     const raw = adjustInputs[targetUser.uid];
-    const amount = !raw || raw <= 0 ? 1 : raw; // ถ้าไม่ใส่หรือ <=0 ให้ใช้ 1 แต้ม
+    const amount = !raw || raw <= 0 ? 1 : raw;
     const delta = mode === "add" ? amount : -amount;
 
     setGlobalError(null);
     setGlobalMessage(null);
-
-    try {
-      setAdjustingUserId(targetUser.uid);
-
-      const userRef = doc(db, "points", "data", "users", targetUser.uid);
-      await updateDoc(userRef, { points: increment(delta) });
-
-      const newPoints = targetUser.points + delta;
-
-      // อัปเดต state รายชื่อลูกค้า
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.uid === targetUser.uid ? { ...u, points: newPoints } : u
-        )
-      );
-
-      // บันทึกประวัติใน pointLogs subcollection
-      await addDoc(collection(db, "points", "data", "users", targetUser.uid, "pointLogs"), {
-        type: "admin_adjust",
-        delta,
-        newPoints,
-        createdAt: serverTimestamp(),
-        source: "admin",
-        adminUid: user.uid,
-        adminEmail: user.email || null,
-      });
-
+    setAdjustingUserId(targetUser.uid);
+    setTimeout(() => {
+      adjustCustomerPoints(targetUser.uid, delta);
       setGlobalMessage(
-        `อัปเดตแต้มให้ ${
-          targetUser.displayName || targetUser.phone || targetUser.email
-        } เรียบร้อย`
+        `ปรับแต้ม ${targetUser.displayName || targetUser.phone} (${delta > 0 ? `+${delta}` : delta} แต้ม) สำเร็จ`
       );
-    } catch (err) {
-      console.error(err);
-      setGlobalError("อัปเดตแต้มไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
-    } finally {
       setAdjustingUserId(null);
-    }
+    }, 200);
   };
 
-  // เปิดหน้าต่างป๊อปอัปดูประวัติแต้มของลูกค้าคนหนึ่ง
-  const openLogsModal = async (targetUser: AppUser) => {
+  const openLogsModal = (targetUser: DemoUser) => {
     setLogsModalUser(targetUser);
     setLogs([]);
     setLoadingLogs(true);
     setGlobalError(null);
     setLogsFilter("all");
 
-    try {
-      const qLogs = query(
-        collection(db, "points", "data", "users", targetUser.uid, "pointLogs"),
-        orderBy("createdAt", "desc"),
-        limit(50)
-      );
-      const snap = await getDocs(qLogs);
-
-      const list: PointLog[] = snap.docs.map((d) => {
-        const data = d.data() as any;
-        return {
-          id: d.id,
-          delta: data.delta ?? 0,
-          type: data.type,
-          createdAt: data.createdAt,
-          source: data.source,
-          adminEmail: data.adminEmail,
-        };
-      });
-
-      setLogs(list);
-    } catch (err) {
-      console.error(err);
-      setGlobalError("โหลดประวัติการใช้สิทธิ์ไม่สำเร็จ");
-    } finally {
+    setTimeout(() => {
+      const demoLogs = getCustomerLogs(targetUser.uid);
+      setLogs(demoLogs);
       setLoadingLogs(false);
-    }
+    }, 150);
   };
 
   const closeLogsModal = () => {
@@ -287,58 +109,23 @@ export default function AdminPage() {
     setLogsFilter("all");
   };
 
-  // สร้าง PIN + ลิงก์รับแต้ม (บันทึกลง Firestore + push เข้า pinHistory)
-  const handleGeneratePinAndLink = async () => {
-    if (!user) return;
-
+  const handleGeneratePinAndLink = () => {
     const points = rewardPoints > 0 ? rewardPoints : 1;
     setRewardPoints(points);
     setCopyStatus("idle");
     setGlobalError(null);
 
-    // PIN 6 หลัก
-    const pin = Math.floor(100000 + Math.random() * 900000);
-    const pinStr = String(pin);
+    const newPin = generatePin(points);
+    const origin = baseUrl || "";
+    const link = origin
+      ? `${origin}/reward_points?pin=${newPin.pin}&demo=true`
+      : `/reward_points?pin=${newPin.pin}&demo=true`;
 
-    try {
-      // สร้างเอกสาร PIN ใน collection "pins"
-      const pinRef = doc(db, "points", "data", "pins", pinStr);
-      await setDoc(pinRef, {
-        points,
-        used: false,
-        createdAt: serverTimestamp(),
-        createdBy: user.uid,
-        createdByEmail: user.email || null,
-      });
-
-      const origin = baseUrl || "";
-      const link = origin
-        ? `${origin}/scan?pin=${pinStr}&points=${points}`
-        : `/scan?pin=${pinStr}&points=${points}`;
-
-      setGeneratedPin(pinStr);
-      setGeneratedLink(link);
-
-      // อัปเดตประวัติใน state ด้านหน้า (แทรกไว้บนสุด)
-      setPinHistory((prev) => [
-        {
-          id: pinStr,
-          pin: pinStr,
-          points,
-          createdAt: { toDate: () => new Date() } as any,
-          used: false,
-        },
-        ...prev,
-      ]);
-
-      setGlobalMessage(`สร้าง PIN ${pinStr} สำหรับ ${points} แต้มเรียบร้อย`);
-    } catch (err) {
-      console.error(err);
-      setGlobalError("ไม่สามารถสร้าง PIN ได้ กรุณาลองใหม่อีกครั้ง");
-    }
+    setGeneratedPin(newPin.pin);
+    setGeneratedLink(link);
+    setGlobalMessage(`สร้าง PIN #${newPin.pin} สำหรับ ${points} แต้มเรียบร้อยแล้ว`);
   };
 
-  // คัดลอกลิงก์
   const handleCopyLink = async () => {
     if (!generatedLink) return;
     if (typeof navigator === "undefined" || !navigator.clipboard) {
@@ -348,71 +135,18 @@ export default function AdminPage() {
     try {
       await navigator.clipboard.writeText(generatedLink);
       setCopyStatus("success");
-      setTimeout(() => setCopyStatus("idle"), 2000);
+      setTimeout(() => setCopyStatus("idle"), 2500);
     } catch {
       setCopyStatus("error");
     }
   };
 
-  // โหลดประวัติสร้าง PIN ล่าสุด (20 รายการ)
-  useEffect(() => {
-    const loadPinHistory = async () => {
-      if (!user || role !== "admin") return;
-      try {
-        setLoadingPins(true);
-        setPinsError(null);
-
-        const qPins = query(
-          collection(db, "points", "data", "pins"),
-          orderBy("createdAt", "desc"),
-          limit(20)
-        );
-        const snap = await getDocs(qPins);
-        const list: PinRecord[] = snap.docs.map((d) => {
-          const data = d.data() as any;
-          return {
-            id: d.id,
-            pin: d.id,
-            points: data.points ?? 0,
-            createdAt: data.createdAt,
-            used: data.used ?? false,
-            usedAt: data.usedAt,
-          };
-        });
-        setPinHistory(list);
-      } catch (err) {
-        console.error(err);
-        setPinsError("โหลดประวัติการสร้าง PIN ไม่สำเร็จ");
-      } finally {
-        setLoadingPins(false);
-      }
-    };
-
-    loadPinHistory();
-  }, [user, role]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <p className="text-slate-200">กำลังโหลดข้อมูลผู้ดูแลระบบ...</p>
-      </div>
-    );
-  }
-
-  if (!user || role !== "admin") {
-    return null;
-  }
-
-  // ====== ฟิลเตอร์ประวัติใน modal ตามหมวดหมู่ ======
   const filteredLogsForModal =
     logsFilter === "all"
       ? logs
       : logs.filter((log) => {
           if (logsFilter === "redeem") {
-            return (
-              log.type === "redeem" ||
-              (log.delta < 0 && log.source === "reward")
-            );
+            return log.type === "redeem" || (log.delta < 0 && log.source === "reward");
           }
           if (logsFilter === "earn") {
             return log.delta > 0 && log.type !== "admin_adjust";
@@ -424,333 +158,342 @@ export default function AdminPage() {
         });
 
   return (
-    <main className="relative min-h-screen flex flex-col bg-slate-950 overflow-hidden text-white">
-      {/* Liquid glass background */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-32 -left-24 h-64 w-64 rounded-full bg-sky-500/30 blur-3xl" />
-        <div className="absolute top-1/3 -right-32 h-72 w-72 rounded-full bg-emerald-400/25 blur-3xl" />
-        <div className="absolute -bottom-40 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-purple-500/25 blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),transparent_55%)]" />
+    <main className="relative min-h-screen flex flex-col bg-[#090d16] text-white overflow-hidden pb-12">
+      <DemoBar currentRole="admin" />
+
+      {/* Subtle background */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-32 -left-24 h-80 w-80 rounded-full bg-indigo-600/10 blur-[120px]" />
+        <div className="absolute top-1/3 -right-32 h-96 w-96 rounded-full bg-amber-500/8 blur-[140px]" />
       </div>
 
-      {/* Top bar */}
-      <header className="relative z-10 w-full border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
-        <div className="max-w-5xl mx-auto flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-sky-400 via-emerald-400 to-indigo-500 flex items-center justify-center shadow-md shadow-sky-500/40">
-              <span className="text-sm font-bold text-slate-950">A</span>
+      {/* Navbar */}
+      <header className="relative z-40 w-full border-b border-white/8 bg-slate-950/60 backdrop-blur-xl">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="white">
+                <path d="M12 2L14.4 9H22L15.8 13.5L18.2 20.5L12 16L5.8 20.5L8.2 13.5L2 9H9.6Z" />
+              </svg>
             </div>
             <div>
-              <h1 className="text-sm md:text-base font-semibold text-white">
-                Admin Dashboard
-              </h1>
-              <p className="text-[11px] text-slate-200/80">
-                จัดการแต้มสะสม / PIN / ลูกค้า
-              </p>
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-sm font-semibold text-white">Points</h1>
+                <span className="text-[10px] border border-indigo-400/30 text-indigo-400 px-1.5 py-0.5 rounded-full">
+                  Admin
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-500">{adminUser.displayName}</p>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden md:inline text-xs text-slate-200/80">
-              เข้าสู่ระบบในชื่อ: {user.email}
-            </span>
-            <span className="md:hidden text-xs text-slate-200/80">
-              {user.email}
-            </span>
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <Link
+              href="/reward_points?demo=true"
+              className="px-3.5 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs transition"
+            >
+              มุมมองลูกค้า
+            </Link>
             <button
               onClick={handleSignOut}
-              className="text-xs md:text-sm text-red-300 hover:text-red-200 hover:underline"
+              className="px-2.5 py-2 text-xs text-slate-500 hover:text-slate-300 transition"
             >
-              ออกจากระบบ
+              ออก
             </button>
           </div>
         </div>
       </header>
 
-      {/* Content */}
-      <div className="relative z-10 w-full max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-5 md:space-y-6">
-        {/* แถวบน: สร้าง PIN / โปรไฟล์แอดมินเล็ก ๆ */}
-        <section className="rounded-3xl border border-white/15 bg-white/10 backdrop-blur-2xl shadow-[0_18px_60px_rgba(15,23,42,0.9)] p-5 md:p-6">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-5">
-            <div className="flex-1">
-              <h2 className="text-base md:text-lg font-semibold mb-1">
-                สร้าง QR / PIN / ลิงก์รับแต้ม
-              </h2>
-              <p className="text-xs md:text-sm text-slate-200/80 mb-4">
-                ใช้ส่วนนี้เพื่อสร้างรหัส PIN และลิงก์สำหรับให้ลูกค้าสแกนหรือกรอก
-                เพื่อรับแต้มสะสมจากร้านของคุณ
-              </p>
+      <div className="relative z-10 max-w-6xl mx-auto px-6 py-6 space-y-5 w-full">
+        {/* Alerts */}
+        {globalError && (
+          <div className="rounded-xl bg-red-500/10 border border-red-400/30 text-red-300 px-4 py-3 text-xs">
+            {globalError}
+          </div>
+        )}
+        {globalMessage && (
+          <div className="rounded-xl bg-emerald-500/10 border border-emerald-400/30 text-emerald-300 px-4 py-3 text-xs flex items-center justify-between">
+            <span>{globalMessage}</span>
+            <button onClick={() => setGlobalMessage(null)} className="text-emerald-400 ml-3">✕</button>
+          </div>
+        )}
 
-              <div className="flex flex-col md:flex-row md:items-end gap-3 mb-3">
-                <div className="flex-1">
-                  <label className="block text-xs font-medium mb-1 text-slate-100">
-                    จำนวนแต้มที่ลูกค้าจะได้รับต่อ 1 ครั้ง
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={rewardPoints || ""}
-                    onChange={(e) => setRewardPoints(Number(e.target.value))}
-                    className="w-full md:w-40 rounded-xl border border-white/20 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/80 focus:border-sky-400/80"
-                  />
-                  <p className="text-[11px] text-slate-300 mt-1">
-                    เช่น กำหนด 1 แต้มต่อการสแกน 1 ครั้ง
-                  </p>
-                </div>
-
-                <div>
-                  <button
-                    type="button"
-                    onClick={handleGeneratePinAndLink}
-                    className="rounded-full bg-gradient-to-r from-sky-500 to-emerald-400 text-slate-950 px-4 py-2 text-sm font-medium shadow-lg shadow-sky-500/40 hover:opacity-95"
-                  >
-                    สร้าง PIN + ลิงก์รับแต้ม
-                  </button>
-                </div>
+        {/* Section 1: Create PIN & QR */}
+        <section className="glass-card rounded-2xl p-5 sm:p-6 border border-white/10">
+          <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+            <div className="flex-1 space-y-4">
+              <div>
+                <h2 className="text-sm font-semibold text-white">สร้างรหัส PIN &amp; QR Code</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  กำหนดจำนวนแต้มแล้วกดสร้าง PIN เพื่อให้ลูกค้าสแกนหรือกรอกหน้าแคชเชียร์
+                </p>
               </div>
 
+              <div className="flex flex-wrap items-end gap-3">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1.5">จำนวนแต้มต่อครั้ง</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={rewardPoints || ""}
+                      onChange={(e) => setRewardPoints(Number(e.target.value))}
+                      className="w-24 rounded-xl glass-input px-3 py-2 text-sm font-semibold text-center text-amber-300 focus:outline-none"
+                    />
+                    <div className="flex gap-1">
+                      {[1, 2, 5].map((pts) => (
+                        <button
+                          key={pts}
+                          type="button"
+                          onClick={() => setRewardPoints(pts)}
+                          className={`px-2.5 py-2 rounded-lg text-xs font-medium border transition ${
+                            rewardPoints === pts
+                              ? "bg-amber-400/15 border-amber-400/40 text-amber-300"
+                              : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
+                          }`}
+                        >
+                          {pts}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGeneratePinAndLink}
+                  className="px-5 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-medium text-xs transition"
+                >
+                  สร้าง PIN + QR
+                </button>
+              </div>
+
+              {/* Generated Result */}
               {generatedPin && (
-                <div className="mt-3 rounded-2xl bg-slate-950/50 border border-white/15 p-3 space-y-3">
-                  <div className="text-sm">
-                    <span className="font-medium text-slate-50">
-                      PIN ที่สร้าง:
-                    </span>{" "}
-                    <span className="font-mono text-base text-emerald-300">
-                      {generatedPin}
-                    </span>
+                <div className="rounded-xl border border-white/10 bg-white/3 p-4 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/8 pb-3">
+                    <div>
+                      <span className="text-[10px] text-slate-500">รหัส PIN</span>
+                      <div className="text-2xl font-mono font-bold text-amber-300 tracking-wider">
+                        {generatedPin}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] border border-amber-400/30 text-amber-400 px-2 py-0.5 rounded-full">
+                        {rewardPoints} แต้ม
+                      </span>
+                      <Link
+                        href={`/reward_points?pin=${generatedPin}&demo=true`}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/30 text-emerald-400 text-xs transition"
+                      >
+                        ทดสอบ PIN นี้
+                      </Link>
+                    </div>
                   </div>
 
-                  <div className="text-[11px] text-slate-300">
-                    เมื่อลูกค้าใส่ PIN นี้หรือสแกน QR / เปิดลิงก์ด้านล่าง
-                    จะได้รับแต้มตามที่กำหนด
-                  </div>
-
-                  <div className="flex flex-col md:flex-row gap-4 items-start">
-                    {/* ลิงก์ */}
-                    <div className="flex-1">
-                      <label className="block text-xs font-medium mb-1 text-slate-100">
-                        ลิงก์รับแต้ม (นำไปแปะใน QR code หรือส่งให้ลูกค้า)
-                      </label>
-                      <div className="flex gap-2 items-center">
+                  <div className="flex flex-col md:flex-row gap-5 items-start">
+                    <div className="flex-1 w-full space-y-2">
+                      <label className="block text-[10px] text-slate-500">ลิงก์สำหรับแนบใน QR Code</label>
+                      <div className="flex gap-2">
                         <input
                           type="text"
                           readOnly
                           value={generatedLink}
-                          className="flex-1 rounded-xl border border-white/15 bg-slate-900/70 px-3 py-2 text-[11px] md:text-xs text-slate-100"
+                          className="flex-1 rounded-xl glass-input px-3 py-2 text-xs text-slate-300 font-mono"
                         />
                         <button
                           type="button"
                           onClick={handleCopyLink}
-                          className="rounded-full bg-slate-50 text-slate-900 px-3 py-2 text-[11px] font-medium hover:bg-white"
+                          className="px-3.5 py-2 rounded-xl bg-white text-slate-950 text-xs font-medium hover:bg-slate-100 transition shrink-0"
                         >
-                          คัดลอก
+                          {copyStatus === "success" ? "✓ คัดลอก" : "คัดลอก"}
                         </button>
                       </div>
-                      {copyStatus === "success" && (
-                        <p className="text-[11px] text-emerald-300 mt-1">
-                          คัดลอกลิงก์เรียบร้อยแล้ว
-                        </p>
-                      )}
-                      {copyStatus === "error" && (
-                        <p className="text-[11px] text-red-300 mt-1">
-                          เบราว์เซอร์ไม่รองรับการคัดลอกอัตโนมัติ
-                          กรุณาเลือกและคัดลอกเอง
-                        </p>
-                      )}
+                      <p className="text-[10px] text-slate-600">
+                        ลูกค้าที่เปิดลิงก์นี้จะได้รับ {rewardPoints} แต้มโดยอัตโนมัติ
+                      </p>
                     </div>
 
-                    {/* QR CODE */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[11px] font-medium mb-2 text-slate-100">
-                        QR Code สำหรับลูกค้าสแกน
-                      </span>
-                      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
-                        <QRCode value={generatedLink || " "} size={144} />
+                    <div className="flex flex-col items-center shrink-0">
+                      <div className="bg-white p-3 rounded-xl shadow-lg">
+                        <QRCode value={generatedLink || "https://storecafe.demo"} size={110} />
                       </div>
+                      <span className="text-[10px] text-slate-500 mt-1.5">QR Code</span>
                     </div>
                   </div>
-
-                  <p className="text-[11px] text-slate-300">
-                    * คุณสามารถพิมพ์ QR นี้ไปติดที่ร้าน หรือบันทึกเป็นรูป
-                    แล้วนำไปใช้งานในสื่ออื่น ๆ ได้
-                  </p>
                 </div>
               )}
             </div>
 
-            {/* โปรไฟล์แอดมิน / สรุปสั้น ๆ */}
-            <div className="w-full md:w-60 rounded-2xl border border-white/20 bg-slate-900/70 p-4 flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-sky-400 to-emerald-400 flex items-center justify-center text-slate-950 font-bold text-sm">
-                  {(user.email || "A").charAt(0).toUpperCase()}
+            {/* Admin Info */}
+            <div className="w-full lg:w-64 rounded-xl border border-white/10 bg-white/3 p-4 space-y-2 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-lg bg-white/8 border border-white/10 flex items-center justify-center text-xs font-bold text-indigo-300">
+                  {(adminUser.displayName || "A").charAt(0)}
                 </div>
                 <div>
-                  <p className="text-xs text-slate-200/90">Admin</p>
-                  <p className="text-[11px] text-slate-300 break-all">
-                    {user.email}
-                  </p>
+                  <h3 className="text-xs font-semibold text-white">Points Manager</h3>
+                  <p className="text-[10px] text-slate-500">ระบบควบคุมส่วนกลาง</p>
                 </div>
               </div>
-              <div className="text-[11px] text-slate-300">
-                จัดการแต้มลูกค้า สร้าง PIN และตรวจสอบประวัติการใช้งานระบบสะสม
-                แต้มจากที่เดียว
-              </div>
+              <p className="text-[10px] text-slate-500 leading-relaxed">
+                โหมด Demo — สร้าง PIN เพิ่ม-หักแต้ม และดูประวัติได้เลย ไม่ต้องต่อฐานข้อมูล
+              </p>
             </div>
           </div>
 
-          {/* ประวัติการสร้าง PIN ล่าสุด */}
-          <div className="mt-5 border-t border-white/10 pt-3">
-            <h3 className="text-xs font-semibold text-slate-100 mb-2">
-              ประวัติการสร้าง PIN ล่าสุด
+          {/* PIN History */}
+          <div className="mt-5 border-t border-white/8 pt-4">
+            <h3 className="text-[10px] text-slate-500 uppercase tracking-wider mb-2">
+              ประวัติ PIN ล่าสุด ({adminPins.length})
             </h3>
-            {loadingPins ? (
-              <p className="text-[11px] text-slate-300">
-                กำลังโหลดประวัติการสร้าง PIN...
-              </p>
-            ) : pinsError ? (
-              <p className="text-[11px] text-red-300">{pinsError}</p>
-            ) : pinHistory.length === 0 ? (
-              <p className="text-[11px] text-slate-300">
-                ยังไม่เคยสร้าง PIN มาก่อน
-              </p>
+            {adminPins.length === 0 ? (
+              <p className="text-xs text-slate-600">ยังไม่มีประวัติ</p>
             ) : (
-              <ul className="space-y-1 text-[11px] text-slate-200">
-                {pinHistory.map((p) => {
-                  const time = p.createdAt?.toDate
-                    ? p.createdAt.toDate().toLocaleString("th-TH")
-                    : "-";
-                  const statusLabel = p.used ? "ใช้แล้ว" : "ยังไม่ได้ใช้";
-                  const statusClass = p.used
-                    ? "text-amber-300"
-                    : "text-emerald-300";
-
-                  return (
-                    <li
-                      key={p.id}
-                      className="flex justify-between border-b border-white/10 pb-1 last:border-b-0"
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {adminPins.slice(0, 6).map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between rounded-xl border border-white/8 bg-white/3 px-3 py-2 text-xs"
+                  >
+                    <div>
+                      <div className="font-mono font-semibold text-amber-300">#{p.pin}</div>
+                      <div className="text-[10px] text-slate-500">
+                        {p.points} แต้ม · {formatDateTime(p.createdAt)}
+                      </div>
+                    </div>
+                    <span
+                      className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                        p.used
+                          ? "bg-white/5 text-slate-500"
+                          : "bg-emerald-500/10 text-emerald-400 border border-emerald-400/20"
+                      }`}
                     >
-                      <span>
-                        PIN {p.pin} — {p.points} แต้ม{" "}
-                        <span className={`ml-1 ${statusClass}`}>
-                          ({statusLabel})
-                        </span>
-                      </span>
-                      <span className="text-slate-400">{time}</span>
-                    </li>
-                  );
-                })}
-              </ul>
+                      {p.used ? "ใช้แล้ว" : "พร้อมใช้"}
+                    </span>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </section>
 
-        {/* จัดการลูกค้า */}
-        <section className="rounded-3xl border border-white/15 bg-white/10 backdrop-blur-2xl shadow-[0_18px_60px_rgba(15,23,42,0.9)] p-5 md:p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
-            <h2 className="text-base md:text-lg font-semibold text-white">
-              จัดการลูกค้า (ค้นหา / เพิ่ม-หักแต้ม / ดูประวัติ)
-            </h2>
-            <div className="flex items-center gap-2 w-full md:w-auto">
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="ค้นหาจากชื่อ, เบอร์โทร, หรืออีเมล"
-                className="w-full md:w-72 rounded-full border border-white/20 bg-slate-900/60 px-3 py-2 text-xs text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/80 focus:border-sky-400/80"
-              />
+        {/* Section 2: Customer Table */}
+        <section className="glass-card rounded-2xl p-5 sm:p-6 border border-white/10">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+            <div>
+              <h2 className="text-sm font-semibold text-white">
+                รายชื่อลูกค้า ({filteredUsers.length})
+              </h2>
+              <p className="text-[10px] text-slate-500 mt-0.5">
+                ค้นหา ปรับแต้ม และดูประวัติการใช้งาน
+              </p>
             </div>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ค้นหาชื่อ, เบอร์, อีเมล..."
+              className="w-full md:w-72 rounded-xl glass-input px-4 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none"
+            />
           </div>
 
-          {globalError && (
-            <div className="mb-2 rounded-xl bg-red-500/15 border border-red-400/60 text-red-100 px-3 py-2 text-xs">
-              {globalError}
-            </div>
-          )}
-          {globalMessage && (
-            <div className="mb-2 rounded-xl bg-emerald-500/15 border border-emerald-400/60 text-emerald-100 px-3 py-2 text-xs">
-              {globalMessage}
-            </div>
-          )}
-
-          <div className="mt-2 overflow-x-auto">
-            <table className="w-full text-sm border-separate border-spacing-y-1">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-separate border-spacing-y-1.5">
               <thead>
-                <tr className="text-xs text-slate-200/80">
-                  <th className="text-left px-3 py-1">ลูกค้า</th>
-                  <th className="text-left px-3 py-1">เบอร์โทร</th>
-                  <th className="text-left px-3 py-1">อีเมล</th>
-                  <th className="text-center px-3 py-1">แต้ม</th>
-                  <th className="text-left px-3 py-1">จัดการแต้ม</th>
-                  <th className="text-left px-3 py-1">ประวัติ</th>
+                <tr className="text-slate-500 text-[10px] uppercase tracking-wider">
+                  <th className="text-left px-4 py-2">ลูกค้า</th>
+                  <th className="text-left px-4 py-2">เบอร์</th>
+                  <th className="text-center px-4 py-2">แต้ม</th>
+                  <th className="text-left px-4 py-2">ปรับแต้ม</th>
+                  <th className="text-center px-4 py-2">ประวัติ</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={6}
-                      className="text-center text-xs text-slate-300 py-4"
-                    >
-                      ยังไม่มีลูกค้าหรือไม่พบข้อมูลที่ค้นหา
+                    <td colSpan={5} className="text-center text-slate-600 py-8 text-xs">
+                      ไม่พบข้อมูลลูกค้า
                     </td>
                   </tr>
                 ) : (
                   filteredUsers.map((u) => {
-                    const delta = adjustInputs[u.uid] ?? 10; // default 10 แต้ม
+                    const delta = adjustInputs[u.uid] ?? 1;
+                    const isSelf = u.uid === "demo-cust-001";
+
                     return (
                       <tr
                         key={u.uid}
-                        className="bg-slate-950/60 rounded-xl border border-white/10"
+                        className={`rounded-xl border transition ${
+                          isSelf
+                            ? "bg-indigo-950/20 border-indigo-500/20"
+                            : "bg-white/3 border-white/8 hover:border-white/15"
+                        }`}
                       >
-                        <td className="px-3 py-2 align-top">
-                          <div className="font-medium text-sm text-white">
-                            {u.displayName || "-"}
-                          </div>
-                          <div className="text-[11px] text-slate-300">
-                            UID: {u.uid.substring(0, 8)}...
+                        <td className="px-4 py-3 rounded-l-xl">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-white/8 border border-white/10 flex items-center justify-center text-xs font-semibold text-amber-300 shrink-0">
+                              {(u.displayName || "U").charAt(0)}
+                            </div>
+                            <div>
+                              <div className="font-medium text-white flex items-center gap-1">
+                                {u.displayName || "-"}
+                                {isSelf && (
+                                  <span className="text-[9px] bg-amber-400/10 text-amber-400 px-1.5 rounded-full border border-amber-400/20">
+                                    Demo
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-slate-500">{u.email}</div>
+                            </div>
                           </div>
                         </td>
-                        <td className="px-3 py-2 align-top text-xs text-slate-200">
+
+                        <td className="px-4 py-3 text-slate-400 font-mono text-[11px]">
                           {u.phone || "-"}
                         </td>
-                        <td className="px-3 py-2 align-top text-xs text-slate-200">
-                          {u.email}
-                        </td>
-                        <td className="px-3 py-2 align-top text-center">
-                          <span className="inline-flex items-center justify-center rounded-full bg-sky-500/10 border border-sky-400/50 px-3 py-1 text-xs font-semibold text-sky-200">
-                            {u.points} แต้ม
+
+                        <td className="px-4 py-3 text-center">
+                          <span className="inline-flex items-center justify-center rounded-full bg-amber-400/10 border border-amber-400/20 px-2.5 py-1 font-semibold text-amber-300 text-[11px]">
+                            {u.points}
                           </span>
                         </td>
-                        <td className="px-3 py-2 align-top">
-                          <div className="flex flex-wrap items-center gap-2">
+
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
                             <input
                               type="number"
                               min={1}
+                              max={50}
                               value={delta}
-                              onChange={(e) =>
-                                handleChangeAdjust(u.uid, e.target.value)
-                              }
-                              className="w-16 rounded-xl border border-white/20 bg-slate-900/70 px-2 py-1 text-xs text-slate-50 focus:outline-none focus:ring-1 focus:ring-sky-500/80"
+                              onChange={(e) => handleChangeAdjust(u.uid, e.target.value)}
+                              className="w-12 rounded-lg glass-input px-2 py-1 text-xs text-center text-amber-300 focus:outline-none"
                             />
                             <button
+                              type="button"
                               onClick={() => handleAdjustPoints(u, "add")}
                               disabled={adjustingUserId === u.uid}
-                              className="rounded-full bg-emerald-500 text-slate-950 px-2.5 py-1 text-xs font-medium hover:bg-emerald-400 disabled:opacity-50"
+                              className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/20 text-emerald-400 text-[11px] font-medium transition disabled:opacity-50"
                             >
                               + เพิ่ม
                             </button>
                             <button
+                              type="button"
                               onClick={() => handleAdjustPoints(u, "subtract")}
                               disabled={adjustingUserId === u.uid}
-                              className="rounded-full bg-amber-400 text-slate-950 px-2.5 py-1 text-xs font-medium hover:bg-amber-300 disabled:opacity-50"
+                              className="px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-400/20 text-red-400 text-[11px] font-medium transition disabled:opacity-50"
                             >
-                              - หัก
+                              − หัก
                             </button>
                           </div>
                         </td>
-                        <td className="px-3 py-2 align-top">
+
+                        <td className="px-4 py-3 text-center rounded-r-xl">
                           <button
+                            type="button"
                             onClick={() => openLogsModal(u)}
-                            className="text-xs text-sky-300 hover:text-sky-200 hover:underline"
+                            className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white text-[11px] transition"
                           >
                             ดูประวัติ
                           </button>
@@ -765,163 +508,105 @@ export default function AdminPage() {
         </section>
       </div>
 
-      {/* Modal ดูประวัติแต้มของลูกค้า */}
+      {/* Logs Modal */}
       {logsModalUser && (
         <div
-          className="fixed inset-0 z-30 flex items-center justify-center bg-black/50 px-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
           onClick={closeLogsModal}
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-white/20 bg-slate-950/95 backdrop-blur-2xl p-5 shadow-[0_18px_60px_rgba(15,23,42,0.9)] max-h-[80vh] overflow-y-auto text-white"
+            className="w-full max-w-lg rounded-2xl border border-white/15 bg-slate-950/95 backdrop-blur-2xl p-6 shadow-2xl text-white max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between border-b border-white/8 pb-3 mb-4">
               <div>
-                <h2 className="text-sm font-semibold">
-                  ประวัติการใช้สิทธิ์ / ปรับแต้ม
-                </h2>
-                <p className="text-[11px] text-slate-300">
-                  ลูกค้า:{" "}
-                  {logsModalUser.displayName ||
-                    logsModalUser.phone ||
-                    logsModalUser.email}
+                <h3 className="text-sm font-semibold text-white">ประวัติการได้แต้ม / ใช้สิทธิ์</h3>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  {logsModalUser.displayName} ({logsModalUser.email})
                 </p>
               </div>
               <button
                 type="button"
                 onClick={closeLogsModal}
-                className="text-slate-400 hover:text-slate-100 text-lg leading-none"
+                className="text-slate-500 hover:text-white text-sm"
               >
-                ×
+                ✕
               </button>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex gap-1.5 mb-4 text-xs">
+              {(["all", "earn", "redeem", "admin"] as const).map((f) => {
+                const labels = { all: "ทั้งหมด", earn: "ได้รับ", redeem: "แลก", admin: "แอดมิน" };
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setLogsFilter(f)}
+                    className={`px-3 py-1 rounded-full border transition ${
+                      logsFilter === f
+                        ? "bg-white/10 border-white/20 text-white font-medium"
+                        : "border-white/8 text-slate-500 hover:bg-white/5"
+                    }`}
+                  >
+                    {labels[f]}
+                  </button>
+                );
+              })}
             </div>
 
             {loadingLogs ? (
-              <p className="text-xs text-slate-300">กำลังโหลดประวัติ...</p>
-            ) : logs.length === 0 ? (
-              <p className="text-xs text-slate-300">
-                ยังไม่มีประวัติการใช้สิทธิ์หรือการปรับแต้ม
-              </p>
+              <p className="text-xs text-slate-500 py-4 text-center">กำลังโหลด...</p>
+            ) : filteredLogsForModal.length === 0 ? (
+              <p className="text-xs text-slate-600 py-6 text-center">ไม่พบประวัติในหมวดหมู่นี้</p>
             ) : (
-              <>
-                {/* ปุ่มเลือกหมวดหมู่ */}
-                <div className="mb-3 flex flex-wrap gap-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setLogsFilter("all")}
-                    className={`px-3 py-1 rounded-full border ${
-                      logsFilter === "all"
-                        ? "bg-sky-500 text-slate-950 border-sky-400"
-                        : "bg-slate-950/70 text-slate-200 border-white/20"
-                    }`}
-                  >
-                    ทั้งหมด
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLogsFilter("redeem")}
-                    className={`px-3 py-1 rounded-full border ${
-                      logsFilter === "redeem"
-                        ? "bg-sky-500 text-slate-950 border-sky-400"
-                        : "bg-slate-950/70 text-slate-200 border-white/20"
-                    }`}
-                  >
-                    การใช้สิทธิ์
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLogsFilter("earn")}
-                    className={`px-3 py-1 rounded-full border ${
-                      logsFilter === "earn"
-                        ? "bg-sky-500 text-slate-950 border-sky-400"
-                        : "bg-slate-950/70 text-slate-200 border-white/20"
-                    }`}
-                  >
-                    รับแต้ม
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLogsFilter("admin")}
-                    className={`px-3 py-1 rounded-full border ${
-                      logsFilter === "admin"
-                        ? "bg-sky-500 text-slate-950 border-sky-400"
-                        : "bg-slate-950/70 text-slate-200 border-white/20"
-                    }`}
-                  >
-                    การปรับของแอดมิน
-                  </button>
-                </div>
-
-                {filteredLogsForModal.length === 0 ? (
-                  <p className="text-xs text-slate-300">
-                    ไม่มีรายการในหมวดหมู่นี้
-                  </p>
-                ) : (
-                  <ul className="space-y-2 text-xs">
-                    {filteredLogsForModal.map((log) => {
-                      const sign = log.delta > 0 ? "+" : "";
-                      const time = log.createdAt?.toDate
-                        ? log.createdAt.toDate().toLocaleString("th-TH")
-                        : "-";
-
-                      let typeLabel = "รายการแต้ม";
-                      if (log.type === "admin_adjust") {
-                        typeLabel = "ปรับแต้มโดยแอดมิน";
-                      } else if (log.type === "redeem") {
-                        typeLabel = "ใช้สิทธิ์แลกรางวัล";
-                      } else if (log.source === "pin") {
-                        typeLabel = "รับแต้มจาก PIN";
-                      } else if (log.source === "reward" && log.delta < 0) {
-                        typeLabel = "ใช้สิทธิ์แลกรางวัล";
-                      }
-
-                      return (
-                        <li
-                          key={log.id}
-                          className="rounded-xl border border-white/20 bg-slate-900/80 px-3 py-2"
-                        >
-                          <div className="flex justify-between mb-1">
-                            <span className="font-medium text-slate-50">
-                              {typeLabel}
-                            </span>
-                            <span
-                              className={
-                                log.delta >= 0
-                                  ? "text-emerald-300 font-semibold"
-                                  : "text-amber-300 font-semibold"
-                              }
-                            >
-                              {sign}
-                              {log.delta} แต้ม
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-slate-300">
-                            <div>วันที่: {time}</div>
-                            {log.adminEmail && (
-                              <div>ผู้ดำเนินการ: {log.adminEmail}</div>
-                            )}
-                            {log.source && <div>ช่องทาง: {log.source}</div>}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </>
+              <div className="space-y-2">
+                {filteredLogsForModal.map((log) => {
+                  const isPositive = log.delta > 0;
+                  return (
+                    <div
+                      key={log.id}
+                      className="flex items-center justify-between rounded-xl border border-white/8 bg-white/3 p-3 text-xs"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="font-medium text-slate-200">
+                          {log.note || (log.type === "redeem" ? "แลกรางวัล" : "รับแต้ม")}
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          {formatDateTime(log.createdAt)} · {log.source || "-"}
+                        </div>
+                      </div>
+                      <div
+                        className={`font-semibold text-sm ${
+                          isPositive ? "text-emerald-400" : "text-amber-400"
+                        }`}
+                      >
+                        {isPositive ? `+${log.delta}` : log.delta}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
-
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                onClick={closeLogsModal}
-                className="rounded-full bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-900 hover:bg-white"
-              >
-                ปิด
-              </button>
-            </div>
           </div>
         </div>
       )}
     </main>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-[#090d16]">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs text-slate-500">กำลังโหลด...</p>
+          </div>
+        </div>
+      }
+    >
+      <AdminContent />
+    </Suspense>
   );
 }

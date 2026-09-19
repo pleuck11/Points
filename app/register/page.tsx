@@ -2,21 +2,12 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { auth, db } from "@/lib/firebase";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-
-type LoginIndexDoc = {
-  email?: string;
-  uid?: string;
-};
-
-// ใช้รูปแบบเดียวกับหน้า login
-const normalizeKey = (s: string) => s.trim().toLowerCase();
-const normalizePhone = (s: string) => s.replace(/\s+/g, "");
+import Link from "next/link";
+import { useDemo } from "@/lib/demo-context";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { customerUser } = useDemo();
 
   const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
@@ -27,7 +18,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -50,193 +41,108 @@ export default function RegisterPage() {
       return;
     }
 
-    try {
-      setLoading(true);
-
-      const usernameKey = normalizeKey(uname);
-      const phoneKey = normalizePhone(phoneRaw);
-
-      // เช็คว่าชื่อผู้ใช้ถูกใช้ไปแล้วหรือยัง
-      const usernameIdxRef = doc(db, "points", "data", "login_index", usernameKey);
-      const usernameIdxSnap = await getDoc(usernameIdxRef);
-      if (usernameIdxSnap.exists()) {
-        const exist = usernameIdxSnap.data() as LoginIndexDoc;
-        setError(
-          `ชื่อผู้ใช้ "${uname}" มีผู้ใช้งานแล้ว หรือ อีเมล "${email}" มีผู้ใช้งานแล้ว )`
-        );
-        setLoading(false);
-        return;
-      }
-
-      // เช็คว่าเบอร์โทรถูกใช้ไปแล้วหรือยัง
-      const phoneIdxRef = doc(db, "points", "data", "login_index", phoneKey);
-      const phoneIdxSnap = await getDoc(phoneIdxRef);
-      if (phoneIdxSnap.exists()) {
-        const exist = phoneIdxSnap.data() as LoginIndexDoc;
-        setError(
-          `เบอร์โทร "${phoneRaw}" มีผู้ใช้งานแล้ว (เชื่อมกับอีเมล ${exist.email || "-"} )`
-        );
-        setLoading(false);
-        return;
-      }
-
-      // สร้างบัญชีใน Firebase Auth
-      const cred = await createUserWithEmailAndPassword(auth, mail, password);
-
-      // ใช้ "ชื่อผู้ใช้" เป็นชื่อที่แสดง
-      const nameForDisplay = uname;
-      await updateProfile(cred.user, {
-        displayName: nameForDisplay,
-      });
-
-      const uid = cred.user.uid;
-
-      // บันทึกข้อมูลลง users/{uid}
-      const userRef = doc(db, "points", "data", "users", uid);
-      await setDoc(userRef, {
-        uid,
-        displayName: nameForDisplay, // แสดงชื่อจาก username
-        username: uname,
-        phone: phoneRaw,
-        email: mail,
-        points: 0,
-        role: "user",
-        createdAt: serverTimestamp(),
-      });
-
-      // สร้าง index สำหรับล็อกอินด้วย username
-      await setDoc(usernameIdxRef, {
-        uid,
-        email: mail,
-      });
-
-      // และด้วยเบอร์โทร
-      await setDoc(phoneIdxRef, {
-        uid,
-        email: mail,
-      });
-
-      // สมัครเสร็จ → ไปหน้าแต้มสะสม
-      router.push("/reward_points");
-    } catch (err: any) {
-      console.log("Register error:", err);
-      if (err?.code === "auth/email-already-in-use") {
-        setError("อีเมลนี้มีบัญชีใช้งานอยู่แล้ว");
-      } else if (err?.code === "auth/invalid-email") {
-        setError("รูปแบบอีเมลไม่ถูกต้อง");
-      } else {
-        setError("ไม่สามารถสมัครสมาชิกได้ กรุณาลองใหม่อีกครั้ง");
-      }
-    } finally {
+    setLoading(true);
+    setTimeout(() => {
+      router.push("/reward_points?demo=true");
       setLoading(false);
-    }
+    }, 350);
   };
 
   return (
-    <main className="relative min-h-screen flex items-center justify-center bg-slate-950 overflow-hidden px-4">
-      {/* Liquid Glass background */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-24 -left-24 h-64 w-64 rounded-full bg-sky-500/30 blur-3xl" />
-        <div className="absolute top-10 right-[-4rem] h-72 w-72 rounded-full bg-emerald-400/25 blur-3xl" />
-        <div className="absolute bottom-[-6rem] left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-violet-500/25 blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),transparent_55%)]" />
+    <main className="relative min-h-screen flex items-center justify-center bg-[#090d16] text-white overflow-hidden px-4 py-8">
+      {/* Subtle background */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-[120px]" />
+        <div className="absolute top-10 right-[-4rem] h-80 w-80 rounded-full bg-indigo-600/10 blur-[140px]" />
       </div>
 
-      {/* Glass card */}
       <div className="relative z-10 w-full max-w-md">
-        <div className="rounded-3xl border border-white/15 bg-white/10 backdrop-blur-2xl shadow-[0_20px_80px_rgba(15,23,42,0.9)] p-7 md:p-8 text-white">
-          {/* header */}
+        <div className="glass-panel rounded-2xl p-7 sm:p-8 shadow-xl border border-white/10">
+          {/* Header */}
           <div className="mb-6 text-center">
-            <div className="inline-flex items-center justify-center mb-3">
-              <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-sky-400 via-emerald-400 to-indigo-500 flex items-center justify-center shadow-lg shadow-sky-500/40">
-                <span className="text-lg font-bold">P</span>
+            <Link href="/" className="inline-flex items-center justify-center mb-4">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#0F172A">
+                  <path d="M12 2L14.4 9H22L15.8 13.5L18.2 20.5L12 16L5.8 20.5L8.2 13.5L2 9H9.6Z" />
+                </svg>
               </div>
-            </div>
-            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-              สมัครสมาชิกใหม่
-            </h1>
-            <p className="mt-1 text-xs md:text-sm text-slate-200/80">
-              สร้างบัญชีเพื่อเริ่มสะสมแต้มกับร้านโปรดของคุณ
-            </p>
+            </Link>
+            <h1 className="text-xl font-bold tracking-tight text-white">สมัครสมาชิก</h1>
+            <p className="mt-1 text-xs text-slate-500">รับสแตมป์การ์ดดิจิทัลและเริ่มสะสมแต้มกับเรา</p>
+          </div>
+
+          {/* Quick Demo */}
+          <div className="mb-5 rounded-xl border border-white/8 bg-white/3 p-3 text-center space-y-2">
+            <p className="text-[10px] text-slate-500">อยากลองดูก่อน?</p>
+            <Link
+              href="/reward_points?demo=true"
+              className="inline-block py-1.5 px-4 rounded-xl bg-amber-400 text-slate-950 text-xs font-semibold hover:bg-amber-300 transition"
+            >
+              ทดลองโหมด Demo ทันที
+            </Link>
           </div>
 
           {error && (
-            <div className="mb-4 rounded-xl bg-red-500/15 border border-red-400/60 text-red-100 px-3 py-2 text-xs md:text-sm">
+            <div className="mb-4 rounded-xl bg-red-500/10 border border-red-400/30 text-red-300 px-3.5 py-2.5 text-xs">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-3.5">
             <div>
-              <label className="block text-xs md:text-sm font-medium mb-1 text-slate-100">
-                ชื่อผู้ใช้
-              </label>
+              <label className="block text-xs text-slate-400 mb-1">ชื่อผู้ใช้</label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="ใช้สำหรับล็อกอิน เช่น ph"
-                className="w-full rounded-xl border border-white/15 bg-slate-900/40 px-3 py-2.5 text-sm text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/80 focus:border-sky-400/80"
+                placeholder="เช่น somchai"
+                className="w-full rounded-xl glass-input px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none"
               />
-              <p className="text-[11px] text-slate-200/70 mt-1">
-                ระบบไม่สนใจตัวพิมพ์เล็ก/ใหญ่ (PH กับ ph ถือว่าเหมือนกัน)
-              </p>
             </div>
 
             <div>
-              <label className="block text-xs md:text-sm font-medium mb-1 text-slate-100">
-                เบอร์โทร
-              </label>
+              <label className="block text-xs text-slate-400 mb-1">เบอร์โทรศัพท์</label>
               <input
                 type="tel"
-                inputMode="numeric"
-                pattern="\d*"
                 maxLength={10}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                placeholder="เช่น 0637513276"
-                className="w-full rounded-xl border border-white/15 bg-slate-900/40 px-3 py-2.5 text-sm text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/80 focus:border-sky-400/80"
+                placeholder="0891234567"
+                className="w-full rounded-xl glass-input px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs md:text-sm font-medium mb-1 text-slate-100">
-                อีเมล
-              </label>
+              <label className="block text-xs text-slate-400 mb-1">อีเมล</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="เช่น example@mail.com"
-                className="w-full rounded-xl border border-white/15 bg-slate-900/40 px-3 py-2.5 text-sm text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/80 focus:border-sky-400/80"
+                placeholder="email@example.com"
+                className="w-full rounded-xl glass-input px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none"
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs md:text-sm font-medium mb-1 text-slate-100">
-                  รหัสผ่าน
-                </label>
+                <label className="block text-xs text-slate-400 mb-1">รหัสผ่าน</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-white/15 bg-slate-900/40 px-3 py-2.5 text-sm text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/80 focus:border-sky-400/80"
+                  placeholder="อย่างน้อย 6 ตัว"
+                  className="w-full rounded-xl glass-input px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none"
                 />
-                <p className="text-[11px] text-slate-200/70 mt-1">
-                  อย่างน้อย 6 ตัวอักษร
-                </p>
               </div>
 
               <div>
-                <label className="block text-xs md:text-sm font-medium mb-1 text-slate-100">
-                  ยืนยันรหัสผ่าน
-                </label>
+                <label className="block text-xs text-slate-400 mb-1">ยืนยันรหัสผ่าน</label>
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full rounded-xl border border-white/15 bg-slate-900/40 px-3 py-2.5 text-sm text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/80 focus:border-sky-400/80"
+                  placeholder="ยืนยันอีกครั้ง"
+                  className="w-full rounded-xl glass-input px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none"
                 />
               </div>
             </div>
@@ -244,26 +150,26 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-1 inline-flex items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-emerald-400 py-2.5 text-sm font-medium text-slate-950 shadow-lg shadow-sky-500/40 hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed transition"
+              className="w-full mt-2 rounded-xl bg-amber-400 hover:bg-amber-300 py-3 text-sm font-semibold text-slate-950 disabled:opacity-60 transition"
             >
               {loading ? "กำลังสมัครสมาชิก..." : "สมัครสมาชิก"}
             </button>
           </form>
 
-          <p className="mt-5 text-center text-xs md:text-sm text-slate-200/80">
-            มีบัญชีอยู่แล้ว?{" "}
-            <a
-              href="/login"
-              className="font-medium text-sky-300 hover:text-sky-200 hover:underline"
-            >
-              เข้าสู่ระบบ
-            </a>
-          </p>
+          <div className="mt-5 text-center text-xs text-slate-500 space-y-1.5">
+            <p>
+              มีบัญชีอยู่แล้ว?{" "}
+              <Link href="/login" className="text-amber-400 hover:text-amber-300">
+                เข้าสู่ระบบ
+              </Link>
+            </p>
+            <p>
+              <Link href="/" className="text-slate-600 hover:text-slate-400">
+                ← กลับหน้าหลัก
+              </Link>
+            </p>
+          </div>
         </div>
-
-        <p className="mt-3 text-center text-[11px] text-slate-300/70">
-          Points Loyalty – เริ่มต้นสะสมแต้มได้ง่าย ๆ แค่สมัครสมาชิก
-        </p>
       </div>
     </main>
   );
